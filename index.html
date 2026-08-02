@@ -524,6 +524,13 @@
   <button class="fullscreen-btn" id="fullscreenBtn" title="全螢幕">⛶</button>
   <div class="storage-status" id="storageStatus"><span class="dot"></span><span id="storageStatusText">讀取中…</span></div>
 
+  <div id="loadingOverlay" style="position:fixed;inset:0;z-index:5000;background:rgba(237,230,214,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;">
+    <div style="width:260px;height:8px;background:rgba(28,37,65,0.12);border-radius:4px;overflow:hidden;">
+      <div id="loadingBarFill" style="width:15%;height:100%;background:var(--ink,#1C2541);border-radius:4px;transition:width 0.4s ease;"></div>
+    </div>
+    <div id="loadingBarText" style="font-family:-apple-system, BlinkMacFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif;font-size:13px;color:#1C2541;">正在連線讀取卷宗資料…</div>
+  </div>
+
 
   <header class="letterhead">
     <p class="eyebrow">CASE ARCHIVE · 個人考古題卷宗</p>
@@ -2858,11 +2865,14 @@ const NTU_104_MAP_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2w
 
 async function loadEntries(){
   window.__loadDiagnostics = { storageGetError: null, migrationError: null, batchError: null, importedBatchesGetError: null };
+  updateLoadingProgress(20, '正在連線 Firebase 雲端資料庫…');
   if(window.__cloudMode && db){
     try{
       entries = await firestoreLoadAllEntries();
+      updateLoadingProgress(55, '已讀取 ' + entries.length + ' 筆題目資料…');
     }catch(cloudLoadErr){
       window.__loadDiagnostics.storageGetError = 'cloud: ' + cloudLoadErr.message;
+      updateLoadingProgress(40, '雲端讀取失敗，改用本機備援資料…');
       // Firestore 讀取失敗（例如離線），退回本機離線儲存資料
       try{
         const res = await window.storage.get(STORAGE_KEY, false);
@@ -2872,6 +2882,7 @@ async function loadEntries(){
       }
     }
   }else{
+    updateLoadingProgress(40, '正在讀取本機離線資料…');
     try{
       const res = await window.storage.get(STORAGE_KEY, false);
       entries = res ? JSON.parse(res.value) : [];
@@ -2886,12 +2897,9 @@ async function loadEntries(){
 
   try{
 
-  // 修正台大研究所國際法舊版「整年合併為一題」的資料，改為重新匯入拆分後版本
-  const oldNtuCount = entries.filter(e => e.id && e.id.indexOf('ntu-intl-98-115') !== -1).length;
-  if(oldNtuCount > 0){
-    entries = entries.filter(e => !(e.id && e.id.indexOf('ntu-intl-98-115') !== -1));
-    changed = true;
-  }
+  // （已移除：舊版「整年合併為一題」清理邏輯。此邏輯原用於清除極早期格式的殘留資料，
+  // 但因新版資料改採固定ID命名（包含批次代號），會被此邏輯誤判為舊格式而遭刪除，
+  // 故予以移除，避免每次載入都誤刪「台大政治所」等正常資料。）
 
   // 修正舊資料命名
   try{
@@ -3196,6 +3204,10 @@ async function loadEntries(){
     { id: IMPORT_BATCH_ID_48, data: SEED_IR_ZHENGDA_EA }
   ];
 
+  if(batchesToImport.some(b => !importedBatches.includes(b.id))){
+    updateLoadingProgress(65, '正在準備匯入歷屆試題批次…');
+  }
+
   batchesToImport.forEach(batch=>{
     try{
       if(!importedBatches.includes(batch.id)){
@@ -3219,6 +3231,7 @@ async function loadEntries(){
 
   let saveOk = true;
   if(changed){
+    updateLoadingProgress(80, '正在將更新後的資料寫回 Firebase…');
     if(window.__cloudMode && db){
       try{
         await firestoreBatchWriteEntries(entries);
@@ -3453,6 +3466,21 @@ function renderSubbar(){
   });
 }
 
+function updateLoadingProgress(percent, text){
+  const fill = document.getElementById('loadingBarFill');
+  const label = document.getElementById('loadingBarText');
+  if(fill) fill.style.width = percent + '%';
+  if(label && text) label.textContent = text;
+}
+
+function hideLoadingOverlay(){
+  const overlay = document.getElementById('loadingOverlay');
+  if(overlay){
+    updateLoadingProgress(100, '完成');
+    setTimeout(()=>{ overlay.style.display = 'none'; }, 200);
+  }
+}
+
 function render(){
   document.getElementById('panel-title').textContent = '卷宗分類：' + catNames[currentCat];
   document.getElementById('count-intl').textContent = entries.filter(e=>e.category==='intl').length || '';
@@ -3460,6 +3488,7 @@ function render(){
   document.getElementById('count-history').textContent = entries.filter(e=>e.category==='history').length || '';
   document.getElementById('count-econ').textContent = entries.filter(e=>e.category==='econ').length || '';
   document.getElementById('count-econstudy').textContent = entries.filter(e=>e.category==='econstudy').length || '';
+  hideLoadingOverlay();
 
   renderSubbar();
 
