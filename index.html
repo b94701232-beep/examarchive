@@ -516,6 +516,8 @@
   .storage-status.saving .dot{background:#D9A441;}
   .storage-status.error .dot{background:#A63A32;}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -611,6 +613,68 @@
 </div>
 
 <script>
+// ===== Firebase Firestore 雲端儲存初始化 =====
+// 若初始化失敗（例如離線、SDK未載入），會自動退回本機離線儲存，不影響網頁運作。
+let db = null;
+window.__cloudMode = false;
+try{
+  const firebaseConfig = {
+    apiKey: "AIzaSyDeMP8VUjMOUTyBNGkqePSZ3z7k9U4BA8I",
+    authDomain: "examarchive-330a9.firebaseapp.com",
+    projectId: "examarchive-330a9",
+    storageBucket: "examarchive-330a9.firebasestorage.app",
+    messagingSenderId: "269960455830",
+    appId: "1:269960455830:web:27e22c393b53065cefc4b7",
+    measurementId: "G-FP7QELE41S"
+  };
+  if(typeof firebase !== 'undefined'){
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+    try{ db.enablePersistence({ synchronizeTabs: true }).catch(()=>{}); }catch(persistErr){}
+    window.__cloudMode = true;
+  }
+}catch(fbInitErr){
+  db = null;
+  window.__cloudMode = false;
+}
+
+const ENTRIES_COLLECTION = 'examarchive_entries';
+const META_COLLECTION = 'examarchive_meta';
+
+async function firestoreLoadAllEntries(){
+  const snapshot = await db.collection(ENTRIES_COLLECTION).get();
+  const list = [];
+  snapshot.forEach(docSnap => { list.push({ id: docSnap.id, ...docSnap.data() }); });
+  return list;
+}
+
+async function firestoreGetImportedBatches(){
+  const docSnap = await db.collection(META_COLLECTION).doc('importedBatches').get();
+  return docSnap.exists ? (docSnap.data().list || []) : [];
+}
+
+async function firestoreSetImportedBatches(list){
+  await db.collection(META_COLLECTION).doc('importedBatches').set({ list });
+}
+
+async function firestoreSaveEntry(entry){
+  const data = {}; for(const k in entry){ if(k !== 'id') data[k] = entry[k]; }
+  await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
+}
+
+async function firestoreBatchWriteEntries(entriesArray){
+  for(let i=0;i<entriesArray.length;i+=450){
+    const chunk = entriesArray.slice(i, i+450);
+    const batch = db.batch();
+    chunk.forEach(entry=>{
+      const data = {}; for(const k in entry){ if(k !== 'id') data[k] = entry[k]; }
+      const ref = db.collection(ENTRIES_COLLECTION).doc(entry.id);
+      batch.set(ref, data, { merge: true });
+    });
+    await batch.commit();
+  }
+}
+
 // 離線／獨立瀏覽器備援機制：若不在 Claude 環境內（沒有 window.storage），
 // 則自動改用瀏覽器內建的 localStorage，讓本檔案下載後可離線單獨開啟使用。
 if(!window.storage){
@@ -2777,12 +2841,27 @@ const NTU_104_MAP_IMAGE = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2w
 
 async function loadEntries(){
   window.__loadDiagnostics = { storageGetError: null, migrationError: null, batchError: null, importedBatchesGetError: null };
-  try{
-    const res = await window.storage.get(STORAGE_KEY, false);
-    entries = res ? JSON.parse(res.value) : [];
-  }catch(e){
-    entries = [];
-    window.__loadDiagnostics.storageGetError = e.message;
+  if(window.__cloudMode && db){
+    try{
+      entries = await firestoreLoadAllEntries();
+    }catch(cloudLoadErr){
+      window.__loadDiagnostics.storageGetError = 'cloud: ' + cloudLoadErr.message;
+      // Firestore 讀取失敗（例如離線），退回本機離線儲存資料
+      try{
+        const res = await window.storage.get(STORAGE_KEY, false);
+        entries = res ? JSON.parse(res.value) : [];
+      }catch(e){
+        entries = [];
+      }
+    }
+  }else{
+    try{
+      const res = await window.storage.get(STORAGE_KEY, false);
+      entries = res ? JSON.parse(res.value) : [];
+    }catch(e){
+      entries = [];
+      window.__loadDiagnostics.storageGetError = e.message;
+    }
   }
 
   let changed = false;
@@ -2872,12 +2951,28 @@ async function loadEntries(){
   });
 
   // 一次性匯入歷屆試題批次（不會重複匯入）
-  try{
-    const ib = await window.storage.get('exam-archive-imported-batches', false);
-    importedBatches = ib ? JSON.parse(ib.value) : [];
-  }catch(e){
+  if(window.__cloudMode && db){
+    try{
+      importedBatches = await firestoreGetImportedBatches();
+    }catch(cloudIbErr){
+      importedBatches = [];
+      window.__loadDiagnostics.importedBatchesGetError = 'cloud: ' + cloudIbErr.message;
+    }
+  }else{
+    try{
+      const ib = await window.storage.get('exam-archive-imported-batches', false);
+      importedBatches = ib ? JSON.parse(ib.value) : [];
+    }catch(e){
+      importedBatches = [];
+      window.__loadDiagnostics.importedBatchesGetError = e.message;
+    }
+  }
+  // 自我修復：若已記錄大量批次為「已匯入」，但實際題目數量遠低於合理值，
+  // 判斷極可能是先前因儲存空間不足導致「假匯入完成」的異常狀態，清空批次紀錄強制重新匯入。
+  if(importedBatches.length >= 10 && entries.length < 10){
     importedBatches = [];
-    window.__loadDiagnostics.importedBatchesGetError = e.message;
+    window.__loadDiagnostics.selfHealTriggered = '偵測到批次已標記匯入但題目數量異常偏低，已重置匯入紀錄，將重新嘗試完整匯入。';
+    changed = true;
   }
   // 強制重新匯入台大研究所國際法批次（已修正為逐題拆分版本）
   const ntuReimportFlag = 'ntu-intl-98-115-v2fix';
@@ -3088,9 +3183,9 @@ async function loadEntries(){
     try{
       if(!importedBatches.includes(batch.id)){
         if(Array.isArray(batch.data)){
-          batch.data.forEach(seed=>{
+          batch.data.forEach((seed, idx)=>{
             entries.push({
-              id: 'seed-' + batch.id + '-' + Math.random().toString(36).slice(2,9),
+              id: 'seed-' + batch.id + '-' + idx,
               createdAt: Date.now(),
               ...seed
             });
@@ -3105,11 +3200,28 @@ async function loadEntries(){
     }
   });
 
+  let saveOk = true;
   if(changed){
-    try{ await window.storage.set('exam-archive-imported-batches', JSON.stringify(importedBatches), false); }catch(e){}
+    if(window.__cloudMode && db){
+      try{
+        await firestoreBatchWriteEntries(entries);
+        await firestoreSetImportedBatches(importedBatches);
+        updateStorageStatus('ok');
+      }catch(cloudSaveErr){
+        saveOk = false;
+        window.__loadDiagnostics.saveEntriesFailed = 'cloud: ' + cloudSaveErr.message;
+        updateStorageStatus('error');
+      }
+    }else{
+      saveOk = await saveToStorage();
+      if(saveOk){
+        try{ await window.storage.set('exam-archive-imported-batches', JSON.stringify(importedBatches), false); }catch(e){}
+      }else{
+        window.__loadDiagnostics.importedBatchesSkipped = '題目資料存檔失敗，已跳過標記已匯入批次，下次會重新嘗試匯入。';
+      }
+    }
   }
 
-  if(changed) await saveToStorage();
   showDiagnosticsIfNeeded(batchesToImport.length);
   render();
 }
@@ -3125,9 +3237,12 @@ function showDiagnosticsIfNeeded(expectedBatchCount){
   let html = '<strong>⚠ 診斷訊息（請截圖給 Claude）</strong><br>';
   html += '題目數量：' + entries.length + '（預期批次數：' + expectedBatchCount + '）<br>';
   if(d.storageGetError) html += 'storageGetError: ' + chineseSafe(d.storageGetError) + '<br>';
+  if(d.selfHealTriggered) html += '🔧 ' + chineseSafe(d.selfHealTriggered) + '<br>';
   if(d.importedBatchesGetError) html += 'importedBatchesGetError: ' + chineseSafe(d.importedBatchesGetError) + '<br>';
   if(d.migrationError) html += 'migrationError: ' + chineseSafe(d.migrationError) + '<br>';
   if(d.batchError) html += 'batchError: ' + chineseSafe(d.batchError) + '<br>';
+  if(d.saveEntriesFailed) html += 'saveEntriesFailed: ' + chineseSafe(d.saveEntriesFailed) + '（資料量可能超過瀏覽器離線儲存空間上限）<br>';
+  if(d.importedBatchesSkipped) html += chineseSafe(d.importedBatchesSkipped) + '<br>';
   html += '<button onclick="this.parentElement.remove()" style="margin-top:8px;padding:4px 10px;">關閉</button>';
   banner.innerHTML = html;
   document.body.insertBefore(banner, document.body.firstChild);
@@ -3138,19 +3253,25 @@ async function saveToStorage(){
   try{
     await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
     updateStorageStatus('ok');
+    return true;
   }catch(e){
     try{
       await new Promise(r=>setTimeout(r, 800));
       await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
       updateStorageStatus('ok');
+      return true;
     }catch(e2){
       try{
         await new Promise(r=>setTimeout(r, 1500));
         await window.storage.set(STORAGE_KEY, JSON.stringify(entries), false);
         updateStorageStatus('ok');
+        return true;
       }catch(e3){
         // 完全靜默：不輸出任何 console 訊息，避免介面跳出提示面板
         updateStorageStatus('error');
+        window.__loadDiagnostics = window.__loadDiagnostics || {};
+        window.__loadDiagnostics.saveEntriesFailed = e3.message || String(e3);
+        return false;
       }
     }
   }
@@ -3160,7 +3281,10 @@ function updateStorageStatus(state){
   const el = document.getElementById('storageStatus');
   const textEl = document.getElementById('storageStatusText');
   if(!el || !textEl) return;
-  const mode = window.__storageMode === 'local' ? '本機離線儲存' : 'Claude 雲端儲存';
+  let mode;
+  if(window.__cloudMode){ mode = 'Firebase 雲端儲存'; }
+  else if(window.__storageMode === 'local'){ mode = '本機離線儲存'; }
+  else{ mode = 'Claude 雲端儲存'; }
   el.classList.remove('saving','error');
   if(state === 'saving'){
     el.classList.add('saving');
@@ -3570,6 +3694,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     return;
   }
 
+  let savedEntry = null;
   if(id){
     const e = entries.find(x=>x.id===id);
     if(e){
@@ -3578,6 +3703,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
       delete e.answer;
       if(currentImageData){ e.questionImage = currentImageData; }
       else{ delete e.questionImage; }
+      savedEntry = e;
     }
   }else{
     const newEntry = {
@@ -3588,9 +3714,22 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     };
     if(currentImageData){ newEntry.questionImage = currentImageData; }
     entries.push(newEntry);
+    savedEntry = newEntry;
   }
 
-  await saveToStorage();
+  if(window.__cloudMode && db && savedEntry){
+    updateStorageStatus('saving');
+    try{
+      await firestoreSaveEntry(savedEntry);
+      updateStorageStatus('ok');
+    }catch(cloudSaveErr){
+      updateStorageStatus('error');
+      // 雲端寫入失敗時，仍嘗試寫入本機離線儲存作為備援，避免這次編輯完全遺失
+      try{ await saveToStorage(); }catch(e){}
+    }
+  }else{
+    await saveToStorage();
+  }
   currentCat = cat;
   currentSub = sub;
   document.querySelectorAll('.tab').forEach(t=>{
