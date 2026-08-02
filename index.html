@@ -2786,6 +2786,7 @@ async function loadEntries(){
   }
 
   let changed = false;
+  let importedBatches = [];
 
   try{
 
@@ -2871,7 +2872,6 @@ async function loadEntries(){
   });
 
   // 一次性匯入歷屆試題批次（不會重複匯入）
-  let importedBatches = [];
   try{
     const ib = await window.storage.get('exam-archive-imported-batches', false);
     importedBatches = ib ? JSON.parse(ib.value) : [];
