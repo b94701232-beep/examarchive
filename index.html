@@ -519,13 +519,40 @@
   .storage-status.saving .dot{background:#D9A441;}
   .storage-status.error .dot{background:#A63A32;}
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+  // 以本機檔案（file://）方式開啟時，完全不載入 Firebase 相關程式庫，
+  // 避免瀏覽器嘗試載入外部資源時卡住，導致後續程式碼無法執行。
+  if(location.protocol !== 'file:'){
+    document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"><\/script>');
+    document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"><\/script>');
+    document.write('<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"><\/script>');
+  }
+</script>
 </head>
 <body>
 <div class="wrap">
   <button class="fullscreen-btn" id="fullscreenBtn" title="全螢幕">⛶</button>
   <div class="storage-status" id="storageStatus"><span class="dot"></span><span id="storageStatusText">讀取中…</span></div>
+  <button id="authStatusBtn" style="display:none;position:fixed;bottom:78px;left:20px;z-index:100;background:var(--ink,#1C2541);color:var(--paper,#EDE6D6);border:none;border-radius:20px;padding:7px 14px;font-size:11px;font-family:-apple-system,sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(28,37,65,0.25);">🔒 未登入（僅可瀏覽）</button>
+
+  <div id="authModal" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(28,37,65,0.45);align-items:center;justify-content:center;">
+    <div style="background:var(--paper,#EDE6D6);border-radius:10px;padding:24px;width:90%;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,0.3);">
+      <h3 style="margin:0 0 14px;font-size:17px;color:var(--ink,#1C2541);">管理員登入</h3>
+      <div style="margin-bottom:10px;">
+        <label style="display:block;font-size:12px;margin-bottom:4px;color:#666;">帳號 Email</label>
+        <input type="email" id="authEmail" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #ccc;border-radius:4px;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="display:block;font-size:12px;margin-bottom:4px;color:#666;">密碼</label>
+        <input type="password" id="authPassword" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #ccc;border-radius:4px;">
+      </div>
+      <div id="authError" style="color:#A63A32;font-size:12px;margin-bottom:10px;display:none;"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="authCancelBtn" style="padding:8px 16px;border:none;background:transparent;color:#666;cursor:pointer;">取消</button>
+        <button id="authSubmitBtn" style="padding:8px 16px;border:none;background:var(--ink,#1C2541);color:#fff;border-radius:4px;cursor:pointer;">登入</button>
+      </div>
+    </div>
+  </div>
 
   <div id="loadingOverlay" style="position:fixed;inset:0;z-index:5000;background:rgba(237,230,214,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px;text-align:center;">
     <div style="width:260px;height:8px;background:rgba(28,37,65,0.12);border-radius:4px;overflow:hidden;">
@@ -545,6 +572,7 @@
       <text x="50" y="42" text-anchor="middle" fill="#EDE6D6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif" font-size="16" font-weight="700">存</text>
       <text x="50" y="66" text-anchor="middle" fill="#EDE6D6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif" font-size="16" font-weight="700">卷</text>
     </svg>
+    <button id="downloadSnapshotBtn" title="下載目前完整資料的網頁備份檔" style="position:absolute;top:24px;right:98px;background:rgba(237,230,214,0.15);border:1px solid rgba(237,230,214,0.5);color:#EDE6D6;border-radius:20px;padding:6px 12px;font-size:11px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif;cursor:pointer;white-space:nowrap;">⬇ 下載目前版本</button>
   </header>
 
   <div class="tabbar" id="tabbar">
@@ -626,8 +654,14 @@
 // ===== Firebase Firestore 雲端儲存初始化 =====
 // 若初始化失敗（例如離線、SDK未載入），會自動退回本機離線儲存，不影響網頁運作。
 let db = null;
+let auth = null;
 window.__cloudMode = false;
 let firestorePersistenceReady = Promise.resolve();
+if(location.protocol === 'file:'){
+  // 以本機檔案（雙擊開啟）方式打開時，Firebase 網路連線無法正常運作，
+  // 直接跳過雲端初始化，改用本機離線儲存，避免卡在連線畫面。
+  window.__cloudMode = false;
+}else{
 try{
   const firebaseConfig = {
     apiKey: "AIzaSyDeMP8VUjMOUTyBNGkqePSZ3z7k9U4BA8I",
@@ -641,6 +675,7 @@ try{
   if(typeof firebase !== 'undefined'){
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
+    auth = firebase.auth();
     // 開啟本機離線快取（IndexedDB），讓已讀取過的資料存放在本機，
     // 之後開啟網頁時可優先使用本機快取，不需每次都重新從網路下載全部資料。
     firestorePersistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch(()=>{});
@@ -649,6 +684,7 @@ try{
 }catch(fbInitErr){
   db = null;
   window.__cloudMode = false;
+}
 }
 
 const ENTRIES_COLLECTION = 'examarchive_entries';
@@ -3002,6 +3038,19 @@ async function loadEntries(){
     window.__loadDiagnostics.selfHealTriggered = '偵測到批次已標記匯入但題目數量異常偏低，已重置匯入紀錄，將重新嘗試完整匯入。';
     changed = true;
   }
+  // 一次性修復：先前的舊版錯誤曾將「台大政治所」實際資料從資料庫中刪除並回寫，
+  // 即使程式邏輯已修正，仍需針對這個已被誤刪的批次強制重新匯入一次。
+  const ntuDataRestoreFlag = 'ntu-intl-98-115-data-restore-v1';
+  if(!importedBatches.includes(ntuDataRestoreFlag)){
+    const ntuCount = entries.filter(e => e.category === 'intl' && e.sub === '台大政治所').length;
+    if(ntuCount === 0){
+      importedBatches = importedBatches.filter(b => b !== 'ntu-intl-98-115' && b !== 'ntu-intl-98-115-v2fix');
+      window.__loadDiagnostics.selfHealTriggered = (window.__loadDiagnostics.selfHealTriggered || '') + ' 偵測到「台大政治所」資料先前遭誤刪，已重新觸發匯入。';
+      changed = true;
+    }
+    importedBatches.push(ntuDataRestoreFlag);
+    changed = true;
+  }
   // 強制重新匯入台大研究所國際法批次（已修正為逐題拆分版本）
   const ntuReimportFlag = 'ntu-intl-98-115-v2fix';
   if(!importedBatches.includes(ntuReimportFlag)){
@@ -3309,6 +3358,72 @@ async function saveToStorage(){
     }
   }
 }
+
+let isSignedIn = false;
+
+function updateAuthUI(user){
+  const btn = document.getElementById('authStatusBtn');
+  if(!btn) return;
+  if(user){
+    isSignedIn = true;
+    btn.textContent = '✓ 已登入（' + user.email + '）點此登出';
+    btn.onclick = ()=>{
+      if(confirm('確定要登出嗎？登出後將無法編輯或新增題目。')){
+        auth.signOut();
+      }
+    };
+  }else{
+    isSignedIn = false;
+    btn.textContent = '🔒 未登入（僅可瀏覽）';
+    btn.onclick = openAuthModal;
+  }
+}
+
+function openAuthModal(){
+  document.getElementById('authError').style.display = 'none';
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authModal').style.display = 'flex';
+}
+
+function closeAuthModal(){
+  document.getElementById('authModal').style.display = 'none';
+}
+
+if(window.__cloudMode && auth){
+  auth.onAuthStateChanged(user=>{ updateAuthUI(user); });
+}else{
+  document.addEventListener('DOMContentLoaded', ()=>{
+    const btn = document.getElementById('authStatusBtn');
+    if(btn) btn.style.display = 'none';
+  });
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const cancelBtn = document.getElementById('authCancelBtn');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  if(cancelBtn) cancelBtn.addEventListener('click', closeAuthModal);
+  if(submitBtn) submitBtn.addEventListener('click', async ()=>{
+    const email = document.getElementById('authEmail').value.trim();
+    const password = document.getElementById('authPassword').value;
+    const errEl = document.getElementById('authError');
+    errEl.style.display = 'none';
+    if(!auth){
+      errEl.textContent = '目前未連上雲端服務，無法登入。';
+      errEl.style.display = 'block';
+      return;
+    }
+    try{
+      await auth.signInWithEmailAndPassword(email, password);
+      closeAuthModal();
+    }catch(authErr){
+      errEl.textContent = '登入失敗：' + (authErr.message || '帳號或密碼錯誤');
+      errEl.style.display = 'block';
+    }
+  });
+  const authModalEl = document.getElementById('authModal');
+  if(authModalEl) authModalEl.addEventListener('click', (ev)=>{ if(ev.target.id === 'authModal') closeAuthModal(); });
+});
 
 function updateStorageStatus(state){
   const el = document.getElementById('storageStatus');
@@ -3814,6 +3929,55 @@ if(fsBtn){
   });
 }
 
+function exportSnapshotHtml(){
+  try{
+    const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+    const tailMarker = ('// __SNAPSHOT' + '_EXPORT_TAIL_MARKER__') + '\n(function(){\n  const loadingTimeoutMs = 20000;';
+    const idx = fullHtml.indexOf(tailMarker);
+    let finalHtml;
+    if(idx === -1){
+      alert('匯出失敗：找不到預期的程式碼區塊，請截圖回報給 Claude。');
+      return;
+    }
+    const tailEndMarker = '<\/script>\n</body>\n</html>';
+    const endIdx = fullHtml.indexOf(tailEndMarker, idx);
+    if(endIdx === -1){
+      alert('匯出失敗：找不到檔案結尾標記，請截圖回報給 Claude。');
+      return;
+    }
+    const entriesJson = JSON.stringify(entries);
+    const replacement =
+      "window.__cloudMode = false;\n" +
+      "entries = " + entriesJson + ";\n" +
+      "render();\n" +
+      "updateStorageStatus('ok');\n" +
+      "hideLoadingOverlay();\n" +
+      "saveToStorage();\n";
+    finalHtml = fullHtml.slice(0, idx) + replacement + fullHtml.slice(endIdx);
+
+    const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const filename = 'archive-snapshot-' + now.getFullYear() + pad(now.getMonth()+1) + pad(now.getDate()) + '-' + pad(now.getHours()) + pad(now.getMinutes()) + '.html';
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 5000);
+  }catch(exportErr){
+    alert('匯出失敗：' + (exportErr.message || String(exportErr)));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const dlBtn = document.getElementById('downloadSnapshotBtn');
+  if(dlBtn) dlBtn.addEventListener('click', exportSnapshotHtml);
+});
+
+// __SNAPSHOT_EXPORT_TAIL_MARKER__
 (function(){
   const loadingTimeoutMs = 20000;
   let finished = false;
