@@ -570,6 +570,7 @@
       <text x="50" y="42" text-anchor="middle" fill="#EDE6D6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif" font-size="16" font-weight="700">存</text>
       <text x="50" y="66" text-anchor="middle" fill="#EDE6D6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif" font-size="16" font-weight="700">卷</text>
     </svg>
+    <button id="refreshPageBtn" title="重新整理，取得最新資料" style="position:absolute;top:24px;right:210px;background:rgba(237,230,214,0.15);border:1px solid rgba(237,230,214,0.5);color:#EDE6D6;border-radius:20px;padding:6px 12px;font-size:11px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif;cursor:pointer;white-space:nowrap;">↻ 重新整理</button>
     <button id="downloadSnapshotBtn" title="下載目前完整資料的網頁備份檔" style="position:absolute;top:24px;right:98px;background:rgba(237,230,214,0.15);border:1px solid rgba(237,230,214,0.5);color:#EDE6D6;border-radius:20px;padding:6px 12px;font-size:11px;font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif;cursor:pointer;white-space:nowrap;">⬇ 下載目前版本</button>
   </header>
 
@@ -3981,6 +3982,8 @@ function exportSnapshotHtml(){
 document.addEventListener('DOMContentLoaded', ()=>{
   const dlBtn = document.getElementById('downloadSnapshotBtn');
   if(dlBtn) dlBtn.addEventListener('click', exportSnapshotHtml);
+  const refreshBtn = document.getElementById('refreshPageBtn');
+  if(refreshBtn) refreshBtn.addEventListener('click', ()=>location.reload());
 });
 
 window.__SNAPSHOT_EXPORT_TAIL_START__ = true;
