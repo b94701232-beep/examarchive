@@ -3934,15 +3934,8 @@ function exportSnapshotHtml(){
     const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
     const tailMarker = ('// __SNAPSHOT' + '_EXPORT_TAIL_MARKER__') + '\n(function(){\n  const loadingTimeoutMs = 20000;';
     const idx = fullHtml.indexOf(tailMarker);
-    let finalHtml;
     if(idx === -1){
       alert('匯出失敗：找不到預期的程式碼區塊，請截圖回報給 Claude。');
-      return;
-    }
-    const tailEndMarker = '<\/script>\n</body>\n</html>';
-    const endIdx = fullHtml.indexOf(tailEndMarker, idx);
-    if(endIdx === -1){
-      alert('匯出失敗：找不到檔案結尾標記，請截圖回報給 Claude。');
       return;
     }
     const entriesJson = JSON.stringify(entries);
@@ -3953,7 +3946,9 @@ function exportSnapshotHtml(){
       "updateStorageStatus('ok');\n" +
       "hideLoadingOverlay();\n" +
       "saveToStorage();\n";
-    finalHtml = fullHtml.slice(0, idx) + replacement + fullHtml.slice(endIdx);
+    // 不再尋找檔案結尾文字比對，直接在替換內容後方自行補上標準結尾標籤，
+    // 避免瀏覽器重新序列化 HTML 時的格式差異造成比對失敗。
+    const finalHtml = fullHtml.slice(0, idx) + replacement + '<\/script>\n</body>\n</html>';
 
     const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
