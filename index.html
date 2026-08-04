@@ -3547,10 +3547,10 @@ function renderMarkdown(text){
       continue;
     }
 
-    const olMatch = line.match(/^\d+[.、]\s+(.*)$/);
+    const olMatch = line.match(/^(\d+)[.、]\s+(.*)$/);
     if(olMatch){
       if(listType !== 'ol'){ closeList(); html += '<ol>'; listType = 'ol'; }
-      html += '<li>' + inlineMarkdown(olMatch[1]) + '</li>';
+      html += '<li value="' + olMatch[1] + '">' + inlineMarkdown(olMatch[2]) + '</li>';
       i++;
       continue;
     }
