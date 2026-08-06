@@ -309,6 +309,17 @@
     margin:4px 0 12px;
     background:#fff;
   }
+  .q-image-placeholder{
+    margin:4px 0 12px;
+  }
+  .q-image-placeholder button{
+    background:#EDE6D6;
+    border:1px dashed var(--paper-line);
+    border-radius:6px;
+    padding:8px 14px;
+    font-size:12px;
+    cursor:pointer;
+  }
   .entry-actions{
     display:flex;
     gap:14px;
@@ -689,7 +700,33 @@ try{
 }
 
 const ENTRIES_COLLECTION = 'examarchive_entries';
+const IMAGES_COLLECTION = 'examarchive_images';
 const META_COLLECTION = 'examarchive_meta';
+const LAZY_IMAGE_MARKER = '__LAZY_IMG__';
+const imageCache = {}; // 記憶體快取：entryId -> base64 圖片字串，避免同一張圖重複下載
+
+async function firestoreSaveImage(entryId, dataUrl){
+  await db.collection(IMAGES_COLLECTION).doc(entryId).set({ data: dataUrl });
+}
+
+async function firestoreLoadImage(entryId){
+  if(imageCache[entryId]) return imageCache[entryId];
+  const docSnap = await db.collection(IMAGES_COLLECTION).doc(entryId).get();
+  const dataUrl = docSnap.exists ? (docSnap.data().data || '') : '';
+  imageCache[entryId] = dataUrl;
+  return dataUrl;
+}
+
+// 把一筆題目資料裡真正的圖片內容抽離出來，另存到 IMAGES_COLLECTION，
+// 主要題目資料裡只留下一個輕量標記，讓題目清單載入時不用一併下載所有圖片。
+async function offloadEntryImage(entry){
+  if(entry.questionImage && entry.questionImage !== LAZY_IMAGE_MARKER && entry.questionImage.indexOf('data:image') === 0){
+    await firestoreSaveImage(entry.id, entry.questionImage);
+    imageCache[entry.id] = entry.questionImage;
+    entry.questionImage = LAZY_IMAGE_MARKER;
+    entry.hasQuestionImage = true;
+  }
+}
 
 async function firestoreLoadAllEntries(){
   await firestorePersistenceReady;
@@ -722,11 +759,13 @@ async function firestoreSetImportedBatches(list){
 }
 
 async function firestoreSaveEntry(entry){
+  await offloadEntryImage(entry);
   const data = {}; for(const k in entry){ if(k !== 'id') data[k] = entry[k]; }
   await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
 }
 
 async function firestoreBatchWriteEntries(entriesArray){
+  for(const entry of entriesArray){ await offloadEntryImage(entry); }
   for(let i=0;i<entriesArray.length;i+=450){
     const chunk = entriesArray.slice(i, i+450);
     const batch = db.batch();
@@ -3153,6 +3192,30 @@ async function loadEntries(){
     changed = true;
   }
 
+  // 一次性搬家：把題目資料裡直接內嵌的附圖，搬到獨立的 IMAGES_COLLECTION，
+  // 主要題目資料只留下輕量標記（hasQuestionImage），加快日後每次開啟網站時的載入速度。
+  // 圖片改成「點進題目才去抓」，不影響已存在的圖片內容，只是換個地方放。
+  const imageOffloadFlag = 'offload-question-images-to-collection-v1';
+  if(!importedBatches.includes(imageOffloadFlag)){
+    if(window.__cloudMode && db){
+      for(const e of entries){
+        if(e.questionImage && e.questionImage !== LAZY_IMAGE_MARKER && e.questionImage.indexOf('data:image') === 0){
+          try{
+            await firestoreSaveImage(e.id, e.questionImage);
+            imageCache[e.id] = e.questionImage;
+            e.questionImage = LAZY_IMAGE_MARKER;
+            e.hasQuestionImage = true;
+            changed = true;
+          }catch(imgOffloadErr){
+            // 單張圖片搬移失敗不影響其他題目，保留原本內嵌圖片，下次再嘗試
+          }
+        }
+      }
+      importedBatches.push(imageOffloadFlag);
+      changed = true;
+    }
+  }
+
   // 一次性補丁：國際法外交特考三等 36題補上 Claude 解答
   const waijiao3ClaudeAnsFlag = 'patch-waijiao3-claude-answers-v1';
   if(!importedBatches.includes(waijiao3ClaudeAnsFlag)){
@@ -3653,7 +3716,17 @@ function render(){
           <div class="entry-body">
             ${currentSub==='all' ? `<div class="sub-tag">${chineseSafe(e.sub||'未分類')}</div>` : ''}
             <p class="q-text">${chineseSafe(e.question)}</p>
-            ${e.questionImage ? `<img class="q-image" src="${e.questionImage}" alt="題目附圖">` : ''}
+            ${(() => {
+              if(e.questionImage && e.questionImage !== LAZY_IMAGE_MARKER){
+                return `<img class="q-image" src="${e.questionImage}" alt="題目附圖">`;
+              } else if(e.questionImage === LAZY_IMAGE_MARKER || e.hasQuestionImage){
+                if(imageCache[e.id]){
+                  return `<img class="q-image" src="${imageCache[e.id]}" alt="題目附圖">`;
+                }
+                return `<div class="q-image-placeholder" id="img-ph-${e.id}"><button class="link-btn" onclick="loadEntryImage('${e.id}')">📷 載入附圖</button></div>`;
+              }
+              return '';
+            })()}
             <div class="entry-actions">
               <button class="link-btn" onclick="copyQuestion('${e.id}', this)">複製</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','chatgpt')">ChatGPT 解答</button>
@@ -3697,6 +3770,23 @@ function toggleYear(y){
   if(openYears.has(key)) openYears.delete(key);
   else openYears.add(key);
   render();
+}
+
+async function loadEntryImage(id){
+  const ph = document.getElementById('img-ph-' + id);
+  if(!ph) return;
+  const btn = ph.querySelector('button');
+  if(btn){ btn.textContent = '載入中…'; btn.disabled = true; }
+  try{
+    const dataUrl = await firestoreLoadImage(id);
+    if(dataUrl){
+      ph.outerHTML = `<img class="q-image" src="${dataUrl}" alt="題目附圖">`;
+    }else{
+      if(btn){ btn.textContent = '圖片載入失敗，點我重試'; btn.disabled = false; }
+    }
+  }catch(err){
+    if(btn){ btn.textContent = '圖片載入失敗，點我重試'; btn.disabled = false; }
+  }
 }
 
 function copyQuestion(id, btn){
@@ -3752,7 +3842,7 @@ function toggleAnswer(id, source){
   if(willShow) box.classList.add('show');
 }
 
-function editEntry(id){
+async function editEntry(id){
   const e = entries.find(x=>x.id===id);
   if(!e) return;
   document.getElementById('modalTitle').textContent = '編輯題目';
@@ -3765,7 +3855,20 @@ function editEntry(id){
   document.getElementById('f-answer-gemini').value = e.answerGemini || '';
   document.getElementById('f-answer-claude').value = e.answerClaude || '';
   document.getElementById('f-image-input').value = '';
-  if(e.questionImage){
+  document.getElementById('overlay').classList.add('show');
+  if(e.questionImage === LAZY_IMAGE_MARKER || e.hasQuestionImage){
+    document.getElementById('image-preview-wrap').style.display = 'none';
+    try{
+      const realImage = await firestoreLoadImage(e.id);
+      currentImageData = realImage || null;
+      if(realImage){
+        document.getElementById('image-preview').src = realImage;
+        document.getElementById('image-preview-wrap').style.display = 'block';
+      }
+    }catch(err){
+      currentImageData = null;
+    }
+  }else if(e.questionImage){
     currentImageData = e.questionImage;
     document.getElementById('image-preview').src = e.questionImage;
     document.getElementById('image-preview-wrap').style.display = 'block';
@@ -3773,7 +3876,6 @@ function editEntry(id){
     currentImageData = null;
     document.getElementById('image-preview-wrap').style.display = 'none';
   }
-  document.getElementById('overlay').classList.add('show');
 }
 
 async function deleteEntry(id){
@@ -3871,8 +3973,8 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
       e.category = cat; e.sub = sub; e.year = year; e.question = question;
       e.answerChatGPT = answerChatGPT; e.answerGemini = answerGemini; e.answerClaude = answerClaude;
       delete e.answer;
-      if(currentImageData){ e.questionImage = currentImageData; }
-      else{ delete e.questionImage; }
+      if(currentImageData){ e.questionImage = currentImageData; delete e.hasQuestionImage; }
+      else{ delete e.questionImage; delete e.hasQuestionImage; }
       savedEntry = e;
     }
   }else{
