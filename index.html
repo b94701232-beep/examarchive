@@ -699,8 +699,26 @@ async function firestoreLoadAllEntries(){
     if(!cacheSnap.empty){
       const list = [];
       cacheSnap.forEach(docSnap => { list.push({ id: docSnap.id, ...docSnap.data() }); });
-      // 背景中同時嘗試從伺服器更新最新資料（不阻塞畫面顯示）
-      db.collection(ENTRIES_COLLECTION).get({ source: 'server' }).catch(()=>{});
+      // 背景中同時嘗試從伺服器更新最新資料（不阻塞畫面顯示）。
+      // 修正：先前這裡只是發出請求後就把結果丟棄（.catch(()=>{})），
+      // 導致「本機快取」若是舊資料（例如尚未包含新增的分類/題目），
+      // 使用者即使重新整理很多次也永遠只看到當初快取住的那份舊資料，
+      // 新增的題目（例如後來才新增的「政治學」「外交史」分類題目）就會一直顯示不出來。
+      // 現在改成：背景抓到最新資料後，若和目前顯示的不同，就更新畫面。
+      db.collection(ENTRIES_COLLECTION).get({ source: 'server' }).then(serverSnap=>{
+        const freshList = [];
+        serverSnap.forEach(docSnap => { freshList.push({ id: docSnap.id, ...docSnap.data() }); });
+        const changedFromCache = freshList.length !== entries.length ||
+          JSON.stringify(freshList) !== JSON.stringify(entries);
+        if(changedFromCache){
+          entries = freshList;
+          render();
+        }
+      }).catch(bgErr=>{
+        window.__loadDiagnostics = window.__loadDiagnostics || {};
+        window.__loadDiagnostics.backgroundRefreshError = 'server refresh failed: ' + (bgErr && bgErr.message);
+        showDiagnosticsIfNeeded(entries.length);
+      });
       return list;
     }
   }catch(cacheErr){
@@ -3315,7 +3333,7 @@ async function loadEntries(){
 
 function showDiagnosticsIfNeeded(expectedBatchCount){
   const d = window.__loadDiagnostics || {};
-  const hasError = d.storageGetError || d.migrationError || d.batchError || d.importedBatchesGetError;
+  const hasError = d.storageGetError || d.migrationError || d.batchError || d.importedBatchesGetError || d.backgroundRefreshError;
   const suspiciouslyLow = entries.length === 0 && expectedBatchCount > 0;
   if(!hasError && !suspiciouslyLow) return;
 
@@ -3328,6 +3346,7 @@ function showDiagnosticsIfNeeded(expectedBatchCount){
   if(d.importedBatchesGetError) html += 'importedBatchesGetError: ' + chineseSafe(d.importedBatchesGetError) + '<br>';
   if(d.migrationError) html += 'migrationError: ' + chineseSafe(d.migrationError) + '<br>';
   if(d.batchError) html += 'batchError: ' + chineseSafe(d.batchError) + '<br>';
+  if(d.backgroundRefreshError) html += 'backgroundRefreshError: ' + chineseSafe(d.backgroundRefreshError) + '（背景更新失敗，畫面可能停留在較舊的本機快取資料）<br>';
   if(d.saveEntriesFailed) html += 'saveEntriesFailed: ' + chineseSafe(d.saveEntriesFailed) + '（資料量可能超過瀏覽器離線儲存空間上限）<br>';
   if(d.importedBatchesSkipped) html += chineseSafe(d.importedBatchesSkipped) + '<br>';
   html += '<button onclick="this.parentElement.remove()" style="margin-top:8px;padding:4px 10px;">關閉</button>';
