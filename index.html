@@ -688,9 +688,10 @@ try{
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     auth = firebase.auth();
-    // 開啟本機離線快取（IndexedDB），讓已讀取過的資料存放在本機，
-    // 之後開啟網頁時可優先使用本機快取，不需每次都重新從網路下載全部資料。
-    firestorePersistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch(()=>{});
+    // 注意：先前這裡曾呼叫 db.enablePersistence()，會在背景建立一條即時監聽（Listen）
+    // 的長連線，用來同步多分頁離線快取。但本程式全部都是用 .get() 主動讀取一次資料，
+    // 從未使用即時訂閱（onSnapshot），這條長連線純屬多餘負擔；且此連線曾出現連不上、
+    // 每隔幾秒自動重試又失敗的情形，反而拖慢網頁反應速度，故予以移除。
     window.__cloudMode = true;
   }
 }catch(fbInitErr){
