@@ -729,25 +729,140 @@ async function offloadEntryImage(entry){
   }
 }
 
-async function firestoreLoadAllEntries(){
-  await firestorePersistenceReady;
-  // 優先嘗試從本機快取讀取（速度快），若快取無資料或失敗則改為從伺服器讀取
-  try{
-    const cacheSnap = await db.collection(ENTRIES_COLLECTION).get({ source: 'cache' });
-    if(!cacheSnap.empty){
-      const list = [];
-      cacheSnap.forEach(docSnap => { list.push({ id: docSnap.id, ...docSnap.data() }); });
-      // 背景中同時嘗試從伺服器更新最新資料（不阻塞畫面顯示）
-      db.collection(ENTRIES_COLLECTION).get({ source: 'server' }).catch(()=>{});
-      return list;
-    }
-  }catch(cacheErr){
-    // 本機無快取或讀取失敗，改走正常線上讀取
-  }
-  const snapshot = await db.collection(ENTRIES_COLLECTION).get();
+function snapshotToEntries(snapshot){
   const list = [];
   snapshot.forEach(docSnap => { list.push({ id: docSnap.id, ...docSnap.data() }); });
   return list;
+}
+
+// 延遲載入的分類：一開始不下載，等使用者真的點進該分類頁籤才去抓，加快第一次開啟網站的速度。
+const LAZY_CATEGORIES = ['econstudy'];
+const lazyLoadedCategories = new Set();
+const lazyLoadingPromises = {};
+
+async function firestoreLoadAllEntries(){
+  await firestorePersistenceReady;
+  const nonLazyCats = Object.keys(catNames).filter(c => !LAZY_CATEGORIES.includes(c));
+
+  // 伺服器優先：確保 Firebase 新增的題目（尤其是新分類）立即出現在畫面。
+  // 若網路或權限暫時失敗，才退回 Firestore 本機快取，保留離線瀏覽能力。
+  try{
+    const serverSnap = await db.collection(ENTRIES_COLLECTION).where('category','in',nonLazyCats).get({ source: 'server' });
+    return snapshotToEntries(serverSnap);
+  }catch(serverErr){
+    try{
+      const cacheSnap = await db.collection(ENTRIES_COLLECTION).where('category','in',nonLazyCats).get({ source: 'cache' });
+      if(!cacheSnap.empty) return snapshotToEntries(cacheSnap);
+    }catch(cacheErr){
+      // 讓原始伺服器錯誤往外拋，loadEntries() 會再改用 localStorage 備援。
+    }
+    throw serverErr;
+  }
+}
+
+// 使用者點進某個延遲載入分類（目前只有國際經濟學）時才呼叫：
+// 向 Firestore 額外抓那個分類的題目，合併進畫面現有資料，並補跑該分類專屬的一次性修正。
+async function loadCategoryEntries(cat){
+  if(!LAZY_CATEGORIES.includes(cat)) return;
+  if(lazyLoadedCategories.has(cat)) return;
+  if(lazyLoadingPromises[cat]) return lazyLoadingPromises[cat];
+  if(!(window.__cloudMode && db)){ lazyLoadedCategories.add(cat); return; }
+
+  lazyLoadingPromises[cat] = (async ()=>{
+    try{
+      const snap = await db.collection(ENTRIES_COLLECTION).where('category','==',cat).get({ source: 'server' });
+      const fetched = snapshotToEntries(snap);
+      const existingIds = new Set(entries.filter(e=>e.category===cat).map(e=>e.id));
+      fetched.forEach(e=>{ if(!existingIds.has(e.id)) entries.push(e); });
+      lazyLoadedCategories.add(cat);
+      if(cat === 'econstudy'){
+        await applyEconstudyDeferredPatches();
+      }
+    }catch(err){
+      window.__loadDiagnostics = window.__loadDiagnostics || {};
+      window.__loadDiagnostics.lazyCategoryError = (window.__loadDiagnostics.lazyCategoryError || '') + cat + ': ' + err.message + '; ';
+    }finally{
+      delete lazyLoadingPromises[cat];
+    }
+  })();
+  return lazyLoadingPromises[cat];
+}
+
+// 國際經濟學延遲載入完成後才補跑的一次性修正／圖片搬家，避免這些分類專屬的補丁
+// 因為載入時機延後，而被誤判成「已經處理過」卻其實從未真正套用到這個分類的資料。
+async function applyEconstudyDeferredPatches(){
+  if(!(window.__cloudMode && db)) return;
+  let importedBatches;
+  try{
+    importedBatches = await firestoreGetImportedBatches();
+  }catch(e){ return; }
+  let changed = false;
+
+  const jingmaoReimportFlag = 'jingmao-econstudy-97-114-v2img';
+  if(!importedBatches.includes(jingmaoReimportFlag)){
+    entries = entries.filter(e => !(e.category === 'econstudy' && e.sub === '國際經濟商務人員' && (e.question.indexOf('原卷附圖') !== -1 || e.question.indexOf('原卷附表') !== -1)));
+    importedBatches.push(jingmaoReimportFlag);
+    changed = true;
+  }
+
+  const diteDedupFlag = 'dite-econstudy-dedup-v1';
+  if(!importedBatches.includes(diteDedupFlag)){
+    const seen = new Map();
+    const deduped = [];
+    entries.forEach(e=>{
+      if(e.category === 'econstudy' && (e.sub === '地特三等' || e.sub === '地特四等')){
+        const key = e.category + '|' + e.sub + '|' + e.year + '|' + e.question.slice(0, 20);
+        if(seen.has(key)){
+          const existingIdx = seen.get(key);
+          if(e.questionImage && !deduped[existingIdx].questionImage){ deduped[existingIdx] = e; }
+          return;
+        }
+        seen.set(key, deduped.length);
+        deduped.push(e);
+      }else{
+        deduped.push(e);
+      }
+    });
+    if(deduped.length !== entries.length){ entries = deduped; changed = true; }
+    importedBatches.push(diteDedupFlag);
+    changed = true;
+  }
+
+  const shenzhangCorrectionFlag = 'patch-shenzhang-econstudy-v2-corrections';
+  if(!importedBatches.includes(shenzhangCorrectionFlag)){
+    SHENZHANG_CORRECTIONS_V2.forEach(c=>{
+      const target = entries.find(e => e.category === 'econstudy' && e.sub === '身心障礙' && e.question.indexOf(c.old_prefix) === 0);
+      if(target){ target.question = c.new; changed = true; }
+    });
+    importedBatches.push(shenzhangCorrectionFlag);
+    changed = true;
+  }
+
+  const econstudyImageOffloadFlag = 'offload-question-images-econstudy-v1';
+  if(!importedBatches.includes(econstudyImageOffloadFlag)){
+    for(const e of entries){
+      if(e.category === 'econstudy' && e.questionImage && e.questionImage !== LAZY_IMAGE_MARKER && e.questionImage.indexOf('data:image') === 0){
+        try{
+          await firestoreSaveImage(e.id, e.questionImage);
+          imageCache[e.id] = e.questionImage;
+          e.questionImage = LAZY_IMAGE_MARKER;
+          e.hasQuestionImage = true;
+          changed = true;
+        }catch(imgErr){
+          // 單張圖片搬移失敗不影響其他題目
+        }
+      }
+    }
+    importedBatches.push(econstudyImageOffloadFlag);
+    changed = true;
+  }
+
+  if(changed){
+    try{
+      await firestoreBatchWriteEntries(entries.filter(e=>e.category==='econstudy'));
+      await firestoreSetImportedBatches(importedBatches);
+    }catch(e){}
+  }
 }
 
 async function firestoreGetImportedBatches(){
@@ -820,6 +935,67 @@ let openYears = new Set();
 let currentImageData = null;
 
 const catNames = { intl: '國際法', ir: '國際關係', history: '外交史', econ: '國際組織', politics: '政治學', econstudy: '國際經濟學' };
+
+
+// Firebase 資料可能由不同版本或直接匯入，因此分類欄位可能使用中文、英文別名或不同欄位名。
+// 統一轉成前端分頁所使用的固定代碼，避免資料存在 Firestore 卻被 render() 的嚴格比對排除。
+const CATEGORY_ALIASES = {
+  intl: 'intl', internationallaw: 'intl', 國際法: 'intl', 國際公法: 'intl',
+  ir: 'ir', internationalrelations: 'ir', 國際關係: 'ir',
+  history: 'history', diplomatichistory: 'history', 外交史: 'history', 近代外交史: 'history',
+  econ: 'econ', internationalorganizations: 'econ', internationalorganization: 'econ', 國際組織: 'econ',
+  politics: 'politics', politicalscience: 'politics', 政治學: 'politics', 比較政治: 'politics',
+  econstudy: 'econstudy', internationaleconomics: 'econstudy', 國際經濟學: 'econstudy', 國際經濟: 'econstudy'
+};
+
+function normalizeCategoryValue(value){
+  if(value === undefined || value === null) return '';
+  const raw = String(value).trim();
+  if(!raw) return '';
+  const key = raw.toLowerCase().replace(/[\s_\-／/·．.]+/g, '');
+  return CATEGORY_ALIASES[key] || raw;
+}
+
+function normalizeEntryForDisplay(entry){
+  if(!entry || typeof entry !== 'object') return false;
+  let changed = false;
+
+  const rawCategory = entry.category ?? entry.cat ?? entry.subjectCode ?? entry.subject ?? '';
+  const normalizedCategory = normalizeCategoryValue(rawCategory);
+  if(normalizedCategory && entry.category !== normalizedCategory){
+    entry.category = normalizedCategory;
+    changed = true;
+  }
+
+  if(!entry.sub){
+    const fallbackSub = entry.subcategory ?? entry.subCategory ?? entry.examType ?? entry.examCategory;
+    if(fallbackSub !== undefined && fallbackSub !== null && String(fallbackSub).trim()){
+      entry.sub = String(fallbackSub).trim();
+      changed = true;
+    }
+  }else if(typeof entry.sub === 'string' && entry.sub !== entry.sub.trim()){
+    entry.sub = entry.sub.trim();
+    changed = true;
+  }
+
+  if((entry.year === undefined || entry.year === null || entry.year === '') && entry.examYear !== undefined){
+    entry.year = String(entry.examYear).trim();
+    changed = true;
+  }else if(entry.year !== undefined && entry.year !== null && typeof entry.year !== 'string'){
+    entry.year = String(entry.year);
+    changed = true;
+  }
+
+  if(!entry.question){
+    const fallbackQuestion = entry.questionText ?? entry.prompt ?? entry.title ?? entry.content;
+    if(fallbackQuestion !== undefined && fallbackQuestion !== null && String(fallbackQuestion).trim()){
+      entry.question = String(fallbackQuestion).trim();
+      changed = true;
+    }
+  }
+
+  return changed;
+}
 
 const subLists = {
   intl: [
@@ -1078,6 +1254,8 @@ const NTU_104_MAP_IMAGE = "";
 
 async function loadEntries(){
   window.__loadDiagnostics = { storageGetError: null, migrationError: null, batchError: null, importedBatchesGetError: null };
+  let changed = false;
+  let importedBatches = [];
   updateLoadingProgress(20, '正在連線 Firebase 雲端資料庫…');
   if(window.__cloudMode && db){
     try{
@@ -1105,8 +1283,10 @@ async function loadEntries(){
     }
   }
 
-  let changed = false;
-  let importedBatches = [];
+  // 統一不同來源／舊版本的欄位與分類值；例如「政治學」會轉為 politics。
+  entries.forEach(entry => {
+    normalizeEntryForDisplay(entry);
+  });
 
   try{
 
@@ -1234,8 +1414,10 @@ async function loadEntries(){
     changed = true;
   }
   // 強制重新匯入國際經濟商務人員批次（已修正為內嵌真實附圖版本）：僅替換原本4題文字說明為內嵌圖片版本，不重複匯入整批
+  // 注意：國際經濟學（econstudy）分類目前改成延遲載入，若還沒載入就不執行此補丁、也不標記完成，
+  // 避免之後點開國際經濟學頁籤時，補丁被誤判成「已經做過」而永遠不會真的套用。
   const jingmaoReimportFlag = 'jingmao-econstudy-97-114-v2img';
-  if(!importedBatches.includes(jingmaoReimportFlag)){
+  if(entries.some(e=>e.category==='econstudy') && !importedBatches.includes(jingmaoReimportFlag)){
     entries = entries.filter(e => !(e.category === 'econstudy' && e.sub === '國際經濟商務人員' && (e.question.indexOf('原卷附圖') !== -1 || e.question.indexOf('原卷附表') !== -1)));
     const imgFixEntries = SEED_ECONSTUDY_JINGMAO.filter(s => s.questionImage);
     imgFixEntries.forEach(s=>{
@@ -1295,7 +1477,7 @@ async function loadEntries(){
   // 修正：地特三等/四等國際經濟學批次因舊版遷移邏輯造成的重複題目，進行去重清理
   // （原本種子資料已直接內嵌圖片，不再需要額外的重新匯入補丁，故移除該補丁並清除其造成的重複）
   const diteDedupFlag = 'dite-econstudy-dedup-v1';
-  if(!importedBatches.includes(diteDedupFlag)){
+  if(entries.some(e=>e.category==='econstudy') && !importedBatches.includes(diteDedupFlag)){
     const seen = new Map();
     const deduped = [];
     entries.forEach(e=>{
@@ -1363,7 +1545,7 @@ async function loadEntries(){
 
   // 一次性補丁：身心障礙三等國際經濟學 98/101年 6題文字修正（依考選部官方原卷逐題複核修正版）
   const shenzhangCorrectionFlag = 'patch-shenzhang-econstudy-v2-corrections';
-  if(!importedBatches.includes(shenzhangCorrectionFlag)){
+  if(entries.some(e=>e.category==='econstudy') && !importedBatches.includes(shenzhangCorrectionFlag)){
     SHENZHANG_CORRECTIONS_V2.forEach(c=>{
       const target = entries.find(e => e.category === 'econstudy' && e.sub === '身心障礙' && e.question.indexOf(c.old_prefix) === 0);
       if(target){
@@ -1511,12 +1693,14 @@ function showDiagnosticsIfNeeded(expectedBatchCount){
   const d = window.__loadDiagnostics || {};
   const hasError = d.storageGetError || d.migrationError || d.batchError || d.importedBatchesGetError;
   const suspiciouslyLow = entries.length === 0 && expectedBatchCount > 0;
-  if(!hasError && !suspiciouslyLow) return;
+  const invalidEntries = entries.filter(e => !catNames[e.category] || !e.question);
+  if(!hasError && !suspiciouslyLow && invalidEntries.length === 0) return;
 
   const banner = document.createElement('div');
   banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#A63A32;color:#fff;padding:12px 16px;font-family:-apple-system,sans-serif;font-size:13px;line-height:1.6;max-height:60vh;overflow-y:auto;';
   let html = '<strong>⚠ 診斷訊息（請截圖給 Claude）</strong><br>';
   html += '題目數量：' + entries.length + '（預期批次數：' + expectedBatchCount + '）<br>';
+  if(invalidEntries.length) html += '欄位或分類無法識別：' + invalidEntries.length + ' 筆（請檢查 category / question 欄位）<br>';
   if(d.storageGetError) html += 'storageGetError: ' + chineseSafe(d.storageGetError) + '<br>';
   if(d.selfHealTriggered) html += '🔧 ' + chineseSafe(d.selfHealTriggered) + '<br>';
   if(d.importedBatchesGetError) html += 'importedBatchesGetError: ' + chineseSafe(d.importedBatchesGetError) + '<br>';
@@ -1589,10 +1773,23 @@ function closeAuthModal(){
   document.getElementById('authModal').style.display = 'none';
 }
 
+async function refreshFromCloud(){
+  const btn = document.getElementById('refreshPageBtn');
+  if(btn) btn.disabled = true;
+  updateLoadingProgress(15, '正在向 Firebase 取得最新題目…');
+  const overlay = document.getElementById('loadingOverlay');
+  if(overlay) overlay.style.display = 'flex';
+  try{
+    await loadEntries();
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
 if(window.__cloudMode && auth){
   auth.onAuthStateChanged(user=>{ updateAuthUI(user); });
 }else{
-  document.addEventListener('DOMContentLoaded', ()=>{
+document.addEventListener('DOMContentLoaded', ()=>{
     const btn = document.getElementById('authStatusBtn');
     if(btn) btn.style.display = 'none';
   });
@@ -1760,6 +1957,10 @@ function renderMarkdown(text){
 
 function renderSubbar(){
   const subbar = document.getElementById('subbar');
+  if(LAZY_CATEGORIES.includes(currentCat) && !lazyLoadedCategories.has(currentCat)){
+    subbar.innerHTML = '';
+    return;
+  }
   const catEntries = entries.filter(e => e.category === currentCat);
   const subs = subLists[currentCat];
   const unassignedCount = catEntries.filter(e => !e.sub || !subs.includes(e.sub)).length;
@@ -1805,10 +2006,18 @@ function render(){
   document.getElementById('count-history').textContent = entries.filter(e=>e.category==='history').length || '';
   document.getElementById('count-econ').textContent = entries.filter(e=>e.category==='econ').length || '';
   document.getElementById('count-politics').textContent = entries.filter(e=>e.category==='politics').length || '';
-  document.getElementById('count-econstudy').textContent = entries.filter(e=>e.category==='econstudy').length || '';
+  document.getElementById('count-econstudy').textContent = lazyLoadedCategories.has('econstudy')
+    ? (entries.filter(e=>e.category==='econstudy').length || '')
+    : '…';
   hideLoadingOverlay();
 
   renderSubbar();
+
+  if(LAZY_CATEGORIES.includes(currentCat) && !lazyLoadedCategories.has(currentCat)){
+    const content = document.getElementById('content');
+    content.innerHTML = `<div class="loading">正在載入「${chineseSafe(catNames[currentCat])}」的題目…</div>`;
+    return;
+  }
 
   const list = entries.filter(e => {
     if(e.category !== currentCat) return false;
@@ -1846,7 +2055,7 @@ function render(){
           <div class="stamp">${idx+1}</div>
           <div class="entry-body">
             ${currentSub==='all' ? `<div class="sub-tag">${chineseSafe(e.sub||'未分類')}</div>` : ''}
-            <p class="q-text">${chineseSafe(e.question)}</p>
+            <p class="q-text">${chineseSafe(e.question || '（題目內容欄位為空）')}</p>
             ${(() => {
               if(e.questionImage && e.questionImage !== LAZY_IMAGE_MARKER){
                 return `<img class="q-image" src="${e.questionImage}" alt="題目附圖">`;
@@ -2017,11 +2226,15 @@ async function deleteEntry(id){
 }
 
 document.querySelectorAll('.tab').forEach(tab=>{
-  tab.addEventListener('click', ()=>{
+  tab.addEventListener('click', async ()=>{
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');
     currentCat = tab.dataset.cat;
     currentSub = 'all';
+    if(LAZY_CATEGORIES.includes(currentCat) && !lazyLoadedCategories.has(currentCat)){
+      render(); // 先畫出「載入中」畫面，不要讓使用者對著空白等
+      await loadCategoryEntries(currentCat);
+    }
     render();
   });
 });
@@ -2216,7 +2429,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const dlBtn = document.getElementById('downloadSnapshotBtn');
   if(dlBtn) dlBtn.addEventListener('click', exportSnapshotHtml);
   const refreshBtn = document.getElementById('refreshPageBtn');
-  if(refreshBtn) refreshBtn.addEventListener('click', ()=>location.reload());
+  if(refreshBtn) refreshBtn.addEventListener('click', refreshFromCloud);
 });
 
 window.__SNAPSHOT_EXPORT_TAIL_START__ = true;
