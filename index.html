@@ -688,10 +688,10 @@ try{
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     auth = firebase.auth();
-    // 注意：先前這裡曾呼叫 db.enablePersistence()，會在背景建立一條即時監聽（Listen）
-    // 的長連線，用來同步多分頁離線快取。但本程式全部都是用 .get() 主動讀取一次資料，
-    // 從未使用即時訂閱（onSnapshot），這條長連線純屬多餘負擔；且此連線曾出現連不上、
-    // 每隔幾秒自動重試又失敗的情形，反而拖慢網頁反應速度，故予以移除。
+    // 開啟本機離線快取，讓已經抓過的資料可以「秒開」顯示；
+    // firestoreLoadAllEntries() 會同時在背景向伺服器要最新資料，資料若有變動會自動更新畫面，
+    // 兩全其美，不會像之前那樣背景抓到新資料卻沒有拿去更新畫面。
+    firestorePersistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch(()=>{});
     window.__cloudMode = true;
   }
 }catch(fbInitErr){
@@ -729,25 +729,38 @@ async function offloadEntryImage(entry){
   }
 }
 
-async function firestoreLoadAllEntries(){
+async function firestoreLoadAllEntries(onFreshData){
   await firestorePersistenceReady;
-  // 優先向伺服器要最新資料，確保畫面顯示的一定是雲端資料庫目前的真實內容；
-  // 只有在真的連不上伺服器（例如離線）時，才退回使用本機快取資料，避免顯示過期的舊快照。
+  let cacheList = null;
   try{
-    const snapshot = await db.collection(ENTRIES_COLLECTION).get({ source: 'server' });
+    const cacheSnap = await db.collection(ENTRIES_COLLECTION).get({ source: 'cache' });
+    if(!cacheSnap.empty){
+      cacheList = [];
+      cacheSnap.forEach(docSnap => { cacheList.push({ id: docSnap.id, ...docSnap.data() }); });
+    }
+  }catch(cacheErr){
+    // 本機沒有快取或讀取失敗，忽略，改走下面的伺服器讀取
+  }
+
+  const serverPromise = db.collection(ENTRIES_COLLECTION).get({ source: 'server' }).then(snapshot=>{
     const list = [];
     snapshot.forEach(docSnap => { list.push({ id: docSnap.id, ...docSnap.data() }); });
-    return list;
-  }catch(serverErr){
-    try{
-      const cacheSnap = await db.collection(ENTRIES_COLLECTION).get({ source: 'cache' });
-      const list = [];
-      cacheSnap.forEach(docSnap => { list.push({ id: docSnap.id, ...docSnap.data() }); });
-      return list;
-    }catch(cacheErr){
-      throw serverErr;
+    // 資料如果跟快取顯示的不一樣（例如新增了「政治學」這類分類），就透過回呼自動更新畫面，
+    // 不會像先前那樣背景抓到新資料卻沒有真的拿去更新，導致畫面卡在舊快照。
+    if(onFreshData && (!cacheList || JSON.stringify(list) !== JSON.stringify(cacheList))){
+      onFreshData(list);
     }
+    return list;
+  });
+
+  if(cacheList){
+    // 本機有快取：先回傳快取資料讓畫面「秒開」，最新資料稍後會在背景抓回來並自動更新
+    serverPromise.catch(()=>{}); // 避免背景讀取失敗變成未處理的 Promise rejection
+    return cacheList;
   }
+
+  // 本機沒有快取：只能乖乖等伺服器資料回來才能顯示畫面
+  return await serverPromise;
 }
 
 async function firestoreGetImportedBatches(){
@@ -1081,7 +1094,10 @@ async function loadEntries(){
   updateLoadingProgress(20, '正在連線 Firebase 雲端資料庫…');
   if(window.__cloudMode && db){
     try{
-      entries = await firestoreLoadAllEntries();
+      entries = await firestoreLoadAllEntries((freshList)=>{
+        entries = freshList;
+        render();
+      });
       updateLoadingProgress(55, '已讀取 ' + entries.length + ' 筆題目資料…');
     }catch(cloudLoadErr){
       window.__loadDiagnostics.storageGetError = 'cloud: ' + cloudLoadErr.message;
