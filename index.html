@@ -677,6 +677,15 @@ try{
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     auth = firebase.auth();
+    // 修正：某些網路環境（公司/學校防火牆、部分防毒軟體的網頁防護、部分廣告攔截外掛）
+    // 會擋掉或干擾 Firestore 預設使用的 WebChannel 即時串流連線（瀏覽器 Console 會看到
+    // 「WebChannelConnection RPC 'Listen' stream transport errored」或 channel 網址回應 404），
+    // 導致頁面卡在「正在連線 Firebase 雲端資料庫…」不會結束，或讀不到最新題目。
+    // 開啟 experimentalAutoDetectLongPolling 讓 SDK 自動偵測並改用相容性更好的長輪詢方式連線，
+    // 可大幅降低被這類網路環境擋住的機率（這是 Firebase 官方建議的因應做法）。
+    try{
+      db.settings({ experimentalAutoDetectLongPolling: true, useFetchStreams: false });
+    }catch(settingsErr){}
     // 開啟本機離線快取（IndexedDB），讓已讀取過的資料存放在本機，
     // 之後開啟網頁時可優先使用本機快取，不需每次都重新從網路下載全部資料。
     firestorePersistenceReady = db.enablePersistence({ synchronizeTabs: true }).catch(()=>{});
