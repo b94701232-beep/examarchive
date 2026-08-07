@@ -753,10 +753,6 @@ async function firestoreSaveEntry(entry){
   await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
 }
 
-async function firestoreDeleteEntry(id){
-  await db.collection(ENTRIES_COLLECTION).doc(id).delete();
-}
-
 async function firestoreBatchWriteEntries(entriesArray){
   for(let i=0;i<entriesArray.length;i+=450){
     const chunk = entriesArray.slice(i, i+450);
@@ -3540,7 +3536,19 @@ function renderMarkdown(text){
 
     if(line === ''){
       flushTable();
-      closeList();
+      // 空行不一定代表清單結束：如果往下第一個非空行仍是同類型的清單項目
+      // （例如 ChatGPT 的解答習慣在每個編號項目之間空一行），就不要斷開清單，
+      // 否則每一項都會變成獨立的 <ol>，編號永遠顯示 1. 而不會累加成 1.2.3.4.
+      if(listType){
+        let j = i + 1;
+        while(j < lines.length && lines[j].trim() === '') j++;
+        const nextLine = j < lines.length ? lines[j].trim() : '';
+        const continuesUl = listType === 'ul' && /^[-*]\s+/.test(nextLine);
+        const continuesOl = listType === 'ol' && /^\d+[.、]\s+/.test(nextLine);
+        if(!continuesUl && !continuesOl){
+          closeList();
+        }
+      }
       i++;
       continue;
     }
@@ -3692,7 +3700,6 @@ function render(){
               <button class="link-btn" onclick="toggleAnswer('${e.id}','gemini')">Gemini 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','claude')">Claude 解答</button>
               <button class="link-btn" onclick="editEntry('${e.id}')">編輯</button>
-              <button class="link-btn danger" onclick="deleteEntry('${e.id}')">刪除</button>
             </div>
             <div class="answer-box" id="ans-${e.id}-chatgpt">
               <div class="answer-label">ChatGPT 解答</div>
@@ -3812,24 +3819,7 @@ function editEntry(id){
 async function deleteEntry(id){
   if(!confirm('確定要刪除這一題嗎？此動作無法復原。')) return;
   entries = entries.filter(e=>e.id!==id);
-  // 修正：先前這裡只把題目從本機資料移除、寫回本機離線儲存，並沒有真的
-  // 呼叫 Firestore 把雲端資料庫裡的那筆文件刪掉。這樣雲端模式下刪除只是
-  // 「這台裝置這次看起來消失了」，下次重新載入（或別的裝置/使用者打開網站）
-  // 資料又會從 Firebase 讀回來，題目其實沒有真正被刪除。
-  // 現在改成：雲端模式下優先呼叫 Firestore 刪除該筆文件；失敗時才退回本機儲存。
-  if(window.__cloudMode && db){
-    updateStorageStatus('saving');
-    try{
-      await firestoreDeleteEntry(id);
-      updateStorageStatus('ok');
-    }catch(cloudDeleteErr){
-      updateStorageStatus('error');
-      alert('雲端刪除失敗（可能是網路問題或未登入），此題目可能在重新整理後又出現。錯誤訊息：' + (cloudDeleteErr && cloudDeleteErr.message));
-      try{ await saveToStorage(); }catch(e){}
-    }
-  }else{
-    await saveToStorage();
-  }
+  await saveToStorage();
   render();
 }
 
