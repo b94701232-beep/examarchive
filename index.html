@@ -759,6 +759,10 @@ async function firestoreSaveEntry(entry){
   await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
 }
 
+async function firestoreDeleteEntry(id){
+  await db.collection(ENTRIES_COLLECTION).doc(id).delete();
+}
+
 async function firestoreBatchWriteEntries(entriesArray){
   for(let i=0;i<entriesArray.length;i+=450){
     const chunk = entriesArray.slice(i, i+450);
@@ -3729,6 +3733,7 @@ function render(){
               <button class="link-btn" onclick="toggleAnswer('${e.id}','gemini')">Gemini 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','claude')">Claude 解答</button>
               <button class="link-btn" onclick="editEntry('${e.id}')">編輯</button>
+              <button class="link-btn danger" onclick="deleteEntry('${e.id}')">刪除</button>
             </div>
             <div class="answer-box" id="ans-${e.id}-chatgpt">
               <div class="answer-label">ChatGPT 解答</div>
@@ -3848,7 +3853,21 @@ function editEntry(id){
 async function deleteEntry(id){
   if(!confirm('確定要刪除這一題嗎？此動作無法復原。')) return;
   entries = entries.filter(e=>e.id!==id);
-  await saveToStorage();
+  // 修正：原本只寫入本機離線儲存，雲端模式下 Firestore 裡的資料並沒有真的被刪除，
+  // 導致重新整理或換裝置後，刪除的題目又會從雲端重新讀回來。這裡改成跟新增／編輯一樣，
+  // 雲端模式下先呼叫 firestoreDeleteEntry 真正刪除雲端文件，失敗時才退回本機備援儲存。
+  if(window.__cloudMode && db){
+    updateStorageStatus('saving');
+    try{
+      await firestoreDeleteEntry(id);
+      updateStorageStatus('ok');
+    }catch(cloudDeleteErr){
+      updateStorageStatus('error');
+      try{ await saveToStorage(); }catch(e){}
+    }
+  }else{
+    await saveToStorage();
+  }
   render();
 }
 
