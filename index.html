@@ -357,6 +357,13 @@
   .answer-box ul, .answer-box ol{margin:0 0 10px;padding-left:22px;}
   .answer-box li{margin:2px 0;}
   .answer-box hr{border:none;border-top:1px solid var(--paper-line);margin:12px 0;}
+  .answer-box blockquote{
+    margin:0 0 10px;
+    padding:2px 12px;
+    border-left:3px solid var(--paper-line);
+    color:var(--ink-soft);
+  }
+  .answer-box blockquote:last-child{margin-bottom:0;}
   .answer-box table{border-collapse:collapse;margin:8px 0 12px;width:100%;font-size:13px;}
   .answer-box th, .answer-box td{border:1px solid var(--paper-line);padding:5px 8px;text-align:left;}
   .answer-box th{background:rgba(184,145,79,0.12);}
@@ -3592,6 +3599,29 @@ function renderMarkdown(text){
       if(listType !== 'ol'){ closeList(); html += '<ol>'; listType = 'ol'; }
       html += '<li>' + inlineMarkdown(olMatch[1]) + '</li>';
       i++;
+      continue;
+    }
+
+    // 引用區塊（> 開頭）：ChatGPT 貼過來的內容常常每一行引用之間夾了空行，
+    // 也常常把 **粗體** 拆成跨越好幾行才收尾，所以這裡把連續（可穿過空行）
+    // 的引用行合併成一段文字再一起做行內語法解析，粗體才能正確跨行配對，
+    // 而不是留下原始的 > 和 ** 符號沒被轉換。
+    const bqMatch = line.match(/^>\s?(.*)$/);
+    if(bqMatch){
+      closeList();
+      const bqLines = [bqMatch[1]];
+      let k = i + 1;
+      while(k < lines.length){
+        let m = k;
+        while(m < lines.length && lines[m].trim() === '') m++;
+        if(m >= lines.length) break;
+        const nextBq = lines[m].trim().match(/^>\s?(.*)$/);
+        if(!nextBq) break;
+        bqLines.push(nextBq[1]);
+        k = m + 1;
+      }
+      html += '<blockquote>' + inlineMarkdown(bqLines.join('\n')).replace(/\n/g, '<br>') + '</blockquote>';
+      i = k;
       continue;
     }
 
