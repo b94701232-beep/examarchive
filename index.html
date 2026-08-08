@@ -529,6 +529,11 @@
   }
   .storage-status.saving .dot{background:#D9A441;}
   .storage-status.error .dot{background:#A63A32;}
+  .math-display{
+    margin:18px 0;
+    text-align:center;
+    overflow-x:auto;
+  }
 </style>
 <!-- MathJax：支援題目／解答中的 LaTeX，例如 \\(i^*\\)、\\(E=mc^2\\) -->
 <script>
@@ -3638,6 +3643,27 @@ function renderMarkdown(text){
       }
       i++;
       continue;
+    }
+
+    // 修復 LaTeX 區塊公式：部分舊資料中的 \[ ... \] 在寫入 JavaScript / Firebase 後
+    // 反斜線可能被吃掉，變成三段式的「[ / 公式 / ]」。
+    // 遇到單獨一行 [ 時，收集到下一個單獨 ]，自動還原成 MathJax display math。
+    if(line === '['){
+      closeList();
+      flushTable();
+      const mathLines = [];
+      let k = i + 1;
+      while(k < lines.length && lines[k].trim() !== ']'){
+        if(lines[k].trim() !== '') mathLines.push(lines[k].trim());
+        k++;
+      }
+      if(k < lines.length && lines[k].trim() === ']' && mathLines.length){
+        const mathText = mathLines.join(' ');
+        html += '<div class="math-display">\\[' + escapeHtml(mathText) + '\\]</div>';
+        i = k + 1;
+        continue;
+      }
+      // 找不到成對的 ] 時，仍按一般文字處理，避免誤吞內容。
     }
 
     // 表格偵測：含有 | 且下一行是分隔線，或已經在表格中
