@@ -3596,7 +3596,31 @@ function typesetMath(){
 
 function renderMarkdown(text){
   if(!text) return '';
-  const lines = text.replace(/\r\n/g, '\n').split('\n');
+  // 修正 ChatGPT 常見的編號格式：有些答案會把每個項目都輸出成「1.」，
+  // 且項目說明之間夾有一般段落。瀏覽器會因此把每段視為新的清單而全部顯示 1。
+  // 這裡先在同一個中文大段落（如（一）（二）（三））內，自動將重複的 1. 依序改為 1.2.3.4.；
+  // 遇到新的（中文數字）段落標題時重新從 1 開始。
+  const rawLines = text.replace(/\r\n/g, '\n').split('\n');
+  let autoOrderedNo = 0;
+  const lines = rawLines.map(rawLine => {
+    const t = rawLine.trim();
+    if(/^[(（][一二三四五六七八九十]+[)）]/.test(t)){
+      autoOrderedNo = 0;
+      return rawLine;
+    }
+    const repeatedOne = t.match(/^1[.、]\s+(.*)$/);
+    if(repeatedOne){
+      autoOrderedNo += 1;
+      const indent = rawLine.match(/^\s*/)[0];
+      return indent + autoOrderedNo + '. ' + repeatedOne[1];
+    }
+    // 若來源本身已有正確 2. 3. 4.，尊重原編號並同步計數器。
+    const explicitNo = t.match(/^(\d+)[.、]\s+(.*)$/);
+    if(explicitNo){
+      autoOrderedNo = Number(explicitNo[1]);
+    }
+    return rawLine;
+  });
   let html = '';
   let i = 0;
   let listType = null; // 'ul' | 'ol' | null
@@ -3643,6 +3667,44 @@ function renderMarkdown(text){
       }
       i++;
       continue;
+    }
+
+    // 正常的 LaTeX 區塊公式：\[ ... \]
+    // Markdown renderer 原本會把起始符、公式內容、結束符各自包成不同 <p>，
+    // MathJax 因此無法跨 DOM 元素辨識。這裡先把整個區塊收集成同一個元素。
+    if(line === '\\['){
+      closeList();
+      flushTable();
+      const mathLines = [];
+      let k = i + 1;
+      while(k < lines.length && lines[k].trim() !== '\\]'){
+        mathLines.push(lines[k]);
+        k++;
+      }
+      if(k < lines.length && lines[k].trim() === '\\]'){
+        const mathText = mathLines.join('\n').trim();
+        html += '<div class="math-display">\\[' + escapeHtml(mathText) + '\\]</div>';
+        i = k + 1;
+        continue;
+      }
+    }
+
+    // 也支援 $$ ... $$ 的區塊公式。
+    if(line === '$$'){
+      closeList();
+      flushTable();
+      const mathLines = [];
+      let k = i + 1;
+      while(k < lines.length && lines[k].trim() !== '$$'){
+        mathLines.push(lines[k]);
+        k++;
+      }
+      if(k < lines.length && lines[k].trim() === '$$'){
+        const mathText = mathLines.join('\n').trim();
+        html += '<div class="math-display">\\[' + escapeHtml(mathText) + '\\]</div>';
+        i = k + 1;
+        continue;
+      }
     }
 
     // 修復 LaTeX 區塊公式：部分舊資料中的 \[ ... \] 在寫入 JavaScript / Firebase 後
@@ -3700,10 +3762,15 @@ function renderMarkdown(text){
       continue;
     }
 
-    const olMatch = line.match(/^\d+[.、]\s+(.*)$/);
+    const olMatch = line.match(/^(\d+)[.、]\s+(.*)$/);
     if(olMatch){
-      if(listType !== 'ol'){ closeList(); html += '<ol>'; listType = 'ol'; }
-      html += '<li>' + inlineMarkdown(olMatch[1]) + '</li>';
+      const itemNo = Number(olMatch[1]) || 1;
+      // 永遠保留來源文字中的實際編號（例如 1. / 2. / 3. / 4.）。
+      // 國安等解答常在每個編號項目之間插入一般說明段落，會使 <ol> 被拆成多段；
+      // 因此除了在新清單用 start 指定起始值，也在每個 <li> 明確指定 value，
+      // 避免瀏覽器把拆開後的清單全部重新從 1 開始。
+      if(listType !== 'ol'){ closeList(); html += '<ol start="' + itemNo + '">'; listType = 'ol'; }
+      html += '<li value="' + itemNo + '">' + inlineMarkdown(olMatch[2]) + '</li>';
       i++;
       continue;
     }
