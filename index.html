@@ -358,10 +358,23 @@
   .answer-box li{margin:2px 0;}
   .answer-box hr{border:none;border-top:1px solid var(--paper-line);margin:12px 0;}
   .answer-box blockquote{
-    margin:0 0 10px;
-    padding:2px 12px;
-    border-left:3px solid var(--paper-line);
-    color:var(--ink-soft);
+    position:relative;
+    margin:10px 0 14px;
+    padding:4px 12px 4px 18px;
+    border-left:none;
+    color:var(--ink);
+    font-weight:600;
+  }
+  .answer-box blockquote::before{
+    content:"";
+    position:absolute;
+    left:0;
+    top:4px;
+    bottom:4px;
+    width:4px;
+    min-height:28px;
+    background:#b9b9b9;
+    border-radius:999px;
   }
   .answer-box blockquote:last-child{margin-bottom:0;}
   .answer-box table{border-collapse:collapse;margin:8px 0 12px;width:100%;font-size:13px;}
@@ -3751,6 +3764,30 @@ function renderMarkdown(text){
       // 避免瀏覽器把拆開後的清單全部重新從 1 開始。
       if(listType !== 'ol'){ closeList(); html += '<ol start="' + itemNo + '">'; listType = 'ol'; }
       html += '<li value="' + itemNo + '">' + inlineMarkdown(olMatch[2]) + '</li>';
+      i++;
+      continue;
+    }
+
+    // 相容舊資料的「引號式引用」：部分答案在儲存／匯入後，原本 Markdown 的
+    // > **重點句** 會只剩成對引號（例如《...》或 «...»），因此畫面只顯示引號，
+    // 沒有 blockquote 左側灰線。若整行只有一組成對引號，就視為重點引用區塊，
+    // 去掉外層引號並以 blockquote + 粗體呈現，效果與 ChatGPT 原始排版一致。
+    const legacyQuoteMatch = line.match(/^(?:《\s*(.+?)\s*》|«\s*(.+?)\s*»|〈\s*(.+?)\s*〉)$/);
+    if(legacyQuoteMatch){
+      closeList();
+      const quoteText = legacyQuoteMatch[1] || legacyQuoteMatch[2] || legacyQuoteMatch[3] || '';
+      html += '<blockquote><strong>' + inlineMarkdown(quoteText) + '</strong></blockquote>';
+      i++;
+      continue;
+    }
+
+    // 整行以《...》或«...»包住的「重點引句」也視為引用區塊。
+    // 這可保留舊資料中已被轉成書名號／角引號的 ChatGPT 引用格式，
+    // 顯示成與 ChatGPT 類似的左側灰色短豎線。
+    const wrappedQuote = line.match(/^(?:《\s*|«\s*)(.+?)(?:\s*》|\s*»)$/);
+    if(wrappedQuote){
+      closeList();
+      html += '<blockquote>' + inlineMarkdown(wrappedQuote[1]) + '</blockquote>';
       i++;
       continue;
     }
