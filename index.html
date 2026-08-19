@@ -3598,6 +3598,17 @@ function inlineMarkdown(s){
   const mathTokens = [];
   let protectedText = String(s ?? '');
 
+  // ChatGPT 有時在複製貼上後會遺失 MathJax 的 \( ... \) 分隔符，
+  // 只剩下像 (m_i)、(x_i)、(\varepsilon)、(\phi)、(\Delta\tau_i) 這種文字。
+  // 只對「括號內明顯含 LaTeX／上下標語法」的片段自動補回行內公式分隔符，
+  // 避免把一般英文括號如 (Foreign Export Supply) 誤當成公式。
+  protectedText = protectedText.replace(/\(([^()\n]{1,120})\)/g, (whole, inner, offset, full)=>{
+    // 已經是 \( ... \) 的公式不要重複包裝。
+    if(offset > 0 && full[offset - 1] === '\\') return whole;
+    const looksLikeMath = /\\[A-Za-z]+|[_^]/.test(inner);
+    return looksLikeMath ? '\\(' + whole + '\\)' : whole;
+  });
+
   function stashMath(match){
     const token = `@@MATH_TOKEN_${mathTokens.length}@@`;
     mathTokens.push(match);
