@@ -552,7 +552,7 @@
 <script>
 window.MathJax = {
   tex: {
-    inlineMath: [['\\(', '\\)'], ['$', '$']],
+    inlineMath: [['\\(', '\\)']],
     displayMath: [['\\[', '\\]'], ['$$', '$$']],
     processEscapes: true
   },
@@ -3594,7 +3594,7 @@ function escapeHtml(s){
 function sanitizeMathForMathJax(math){
   // MathJax/TeX 會把裸 # 視為巨集參數符號；一般貼上的公式若含 #，
   // 自動轉成 \#，避免出現 "You can't use 'macro parameter character #' in math mode"。
-  return String(math ?? '').replace(/(^|[^\\])#/g, '$1\\#');
+  return String(math ?? '').replace(/(^|[^\\])#/g, '$1\\#').replace(/\\\\#/g, '\\#');
 }
 
 function inlineMarkdown(s){
@@ -3625,7 +3625,15 @@ function inlineMarkdown(s){
   // display math 主要由 renderMarkdown 的區塊處理器負責，但這裡也一併保護單行版本。
   protectedText = protectedText.replace(/\\\([\s\S]*?\\\)/g, stashMath);
   protectedText = protectedText.replace(/\$\$[\s\S]*?\$\$/g, stashMath);
-  protectedText = protectedText.replace(/\$(?!\$)(?:\\.|[^$\n])*?\$(?!\$)/g, stashMath);
+  // 單一 $ 很常是美元符號（例如 $100），不能一律當成 MathJax 公式，
+  // 否則兩個金額之間的大段文字可能被誤吃進 math mode，甚至把 Markdown 的 # 當成 TeX 巨集參數。
+  // 只有內容「明顯像數學式」時才把 $...$ 轉成安全的 \\( ... \\)；純金額則保留原樣。
+  protectedText = protectedText.replace(/\$(?!\$)([^$\n]+?)\$(?!\$)/g, (whole, inner)=>{
+    const t = inner.trim();
+    const looksLikeMath = /\\[A-Za-z]+|[_^=<>]|\\frac|\\sum|\\prod|\\to|\\infty|\\Delta|\\phi|\\varepsilon/.test(t);
+    const looksLikeCurrency = /^\s*[+-]?(?:\d[\d,]*(?:\.\d+)?|\.\d+)\s*(?:USD|US\$|元|美元)?\s*$/i.test(t);
+    return (looksLikeMath && !looksLikeCurrency) ? stashMath('\\(' + inner + '\\)') : whole;
+  });
   protectedText = protectedText.replace(/\\\[[\s\S]*?\\\]/g, stashMath);
 
   // 先保護 Markdown 跳脫星號（\*）。例如 ChatGPT 常輸出：
@@ -3656,10 +3664,26 @@ function inlineMarkdown(s){
   return out;
 }
 
+function sanitizeMathTextNodes(root){
+  if(!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while(walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach(node=>{
+    let t = node.nodeValue || '';
+    // 僅清理明確 MathJax delimiters 內的 #，不碰一般 Markdown 標題。
+    t = t.replace(/\\\(([\s\S]*?)\\\)/g, (m, inner)=>'\\(' + sanitizeMathForMathJax(inner) + '\\)');
+    t = t.replace(/\\\[([\s\S]*?)\\\]/g, (m, inner)=>'\\[' + sanitizeMathForMathJax(inner) + '\\]');
+    t = t.replace(/\$\$([\s\S]*?)\$\$/g, (m, inner)=>'$$' + sanitizeMathForMathJax(inner) + '$$');
+    node.nodeValue = t;
+  });
+}
+
 function typesetMath(){
   // render() 會動態重建題目／解答內容，因此每次 render 後都讓 MathJax 重新處理 LaTeX。
   // MathJax 尚未載入時直接略過，不影響頁面正常顯示。
   if(window.MathJax && MathJax.typesetPromise){
+    sanitizeMathTextNodes(document.getElementById('content'));
     MathJax.typesetClear && MathJax.typesetClear([document.getElementById('content')]);
     MathJax.typesetPromise([document.getElementById('content')]).catch(()=>{});
   }
