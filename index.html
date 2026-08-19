@@ -842,6 +842,9 @@ async function firestoreSetImportedBatches(list){
 
 async function firestoreSaveEntry(entry){
   const data = {}; for(const k in entry){ if(k !== 'id') data[k] = entry[k]; }
+  // merge 寫入不會自動移除未出現在 data 裡的舊欄位；使用者按「移除圖片」後，
+  // 必須送出 FieldValue.delete()，否則重新載入時 questionImage 仍會從雲端回來。
+  if(!entry.questionImage){ data.questionImage = firebase.firestore.FieldValue.delete(); }
   await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
 }
 
@@ -922,7 +925,7 @@ const subLists = {
   ],
   politics: [
     '外特三等憲法','外特四等憲法','外特三等比政','外特四等比政','外特三等兩岸','外特四等兩岸',
-    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
+    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法三等','移民憲法四等','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
     '政治學'
   ],
   econstudy: [
@@ -3092,6 +3095,7 @@ async function loadEntries(){
       changed = true;
     }
     if(e.category === 'ir' && e.sub === '僑務行政'){ e.sub = '高考僑務'; changed = true; }
+    if(e.category === 'politics' && e.sub === '移民憲法'){ e.sub = '移民憲法三等'; changed = true; }
     if(e.sub === '國際文化行政'){ e.sub = '國際文教行政'; changed = true; }
     if(e.category === 'history' && e.sub === '其他'){ e.sub = '政大日研所'; changed = true; }
     if(e.id && e.id.indexOf('zhengda-history-111-115') !== -1 && e.category === 'history'){
