@@ -3592,11 +3592,34 @@ function escapeHtml(s){
 }
 
 function inlineMarkdown(s){
-  // 先跳脫HTML，再處理行內語法：**粗體**、*斜體*、`代碼`
-  let out = escapeHtml(s);
+  // 先保護 LaTeX，再處理 Markdown。
+  // 原本直接解析 *斜體*，會把 \varepsilon^{*}、t^{*} 這類公式中的星號誤吃掉，
+  // 導致 MathJax 最後收到殘缺公式。這裡先以 placeholder 暫存所有數學片段。
+  const mathTokens = [];
+  let protectedText = String(s ?? '');
+
+  function stashMath(match){
+    const token = `@@MATH_TOKEN_${mathTokens.length}@@`;
+    mathTokens.push(match);
+    return token;
+  }
+
+  // 行內公式：\(...\) 與 $...$。
+  // display math 主要由 renderMarkdown 的區塊處理器負責，但這裡也一併保護單行版本。
+  protectedText = protectedText.replace(/\\\([\s\S]*?\\\)/g, stashMath);
+  protectedText = protectedText.replace(/\$\$[\s\S]*?\$\$/g, stashMath);
+  protectedText = protectedText.replace(/\$(?!\$)(?:\\.|[^$\n])*?\$(?!\$)/g, stashMath);
+  protectedText = protectedText.replace(/\\\[[\s\S]*?\\\]/g, stashMath);
+
+  let out = escapeHtml(protectedText);
   out = out.replace(/`([^`]+?)`/g, '<code>$1</code>');
   out = out.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
   out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+
+  // 還原數學片段；仍先做 HTML escape，讓 MathJax 安全接手解析。
+  mathTokens.forEach((math, idx)=>{
+    out = out.replace(`@@MATH_TOKEN_${idx}@@`, escapeHtml(math));
+  });
   return out;
 }
 
@@ -4100,102 +4123,21 @@ document.getElementById('openAdd').addEventListener('click', ()=>{
   document.getElementById('overlay').classList.add('show');
 });
 
-// 將題目圖片壓縮到 Firestore 可安全保存的大小。
-// Firestore 單一文件上限約 1 MiB；Base64 又會比原始圖片大約 33%，
-// 因此這裡把圖片控制在約 420 KB 的 data URL 內，避免儲存時文件過大。
-async function compressQuestionImage(file){
-  const MAX_DATA_URL_BYTES = 420 * 1024;
-  const MAX_DIMENSION = 1600;
-
-  const originalDataUrl = await new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-  // 已經夠小就直接使用，避免不必要的重新壓縮。
-  if(typeof originalDataUrl === 'string' && originalDataUrl.length <= MAX_DATA_URL_BYTES){
-    return originalDataUrl;
-  }
-
-  const img = await new Promise((resolve, reject)=>{
-    const el = new Image();
-    el.onload = () => resolve(el);
-    el.onerror = reject;
-    el.src = originalDataUrl;
-  });
-
-  let width = img.naturalWidth || img.width;
-  let height = img.naturalHeight || img.height;
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
-  width = Math.max(1, Math.round(width * scale));
-  height = Math.max(1, Math.round(height * scale));
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d', { alpha: false });
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, width, height);
-  ctx.drawImage(img, 0, 0, width, height);
-
-  let quality = 0.88;
-  let dataUrl = canvas.toDataURL('image/jpeg', quality);
-  while(dataUrl.length > MAX_DATA_URL_BYTES && quality > 0.45){
-    quality -= 0.08;
-    dataUrl = canvas.toDataURL('image/jpeg', quality);
-  }
-
-  // 如果品質已壓低仍太大，再縮尺寸一次。
-  if(dataUrl.length > MAX_DATA_URL_BYTES){
-    const ratio = Math.sqrt(MAX_DATA_URL_BYTES / dataUrl.length) * 0.92;
-    const w2 = Math.max(1, Math.round(width * ratio));
-    const h2 = Math.max(1, Math.round(height * ratio));
-    const c2 = document.createElement('canvas');
-    c2.width = w2;
-    c2.height = h2;
-    const c2ctx = c2.getContext('2d', { alpha: false });
-    c2ctx.fillStyle = '#ffffff';
-    c2ctx.fillRect(0, 0, w2, h2);
-    c2ctx.drawImage(canvas, 0, 0, w2, h2);
-    dataUrl = c2.toDataURL('image/jpeg', 0.72);
-  }
-
-  return dataUrl;
-}
-
-document.getElementById('f-image-input').addEventListener('change', async (ev)=>{
+document.getElementById('f-image-input').addEventListener('change', (ev)=>{
   const file = ev.target.files && ev.target.files[0];
   if(!file) return;
-  if(file.size > 12 * 1024 * 1024){
-    alert('圖片檔案過大，請選擇小於 12MB 的圖片。');
+  if(file.size > 4 * 1024 * 1024){
+    alert('圖片檔案過大，請選擇小於 4MB 的圖片。');
     ev.target.value = '';
     return;
   }
-
-  try{
-    const wrap = document.getElementById('image-preview-wrap');
-    wrap.style.display = 'block';
-    document.getElementById('image-preview').removeAttribute('src');
-    const oldMsg = document.getElementById('image-compress-status');
-    if(oldMsg) oldMsg.remove();
-    const status = document.createElement('div');
-    status.id = 'image-compress-status';
-    status.style.cssText = 'font-size:12px;color:var(--muted);margin-top:6px;';
-    status.textContent = '正在壓縮圖片，準備儲存到雲端…';
-    wrap.appendChild(status);
-
-    currentImageData = await compressQuestionImage(file);
+  const reader = new FileReader();
+  reader.onload = () => {
+    currentImageData = reader.result;
     document.getElementById('image-preview').src = currentImageData;
-    status.textContent = '✓ 圖片已壓縮，按「歸檔」後會儲存到 Firebase';
-  }catch(imgErr){
-    console.error('圖片處理失敗', imgErr);
-    alert('圖片處理失敗，請換一張圖片再試。');
-    currentImageData = null;
-    ev.target.value = '';
-    document.getElementById('image-preview-wrap').style.display = 'none';
-  }
+    document.getElementById('image-preview-wrap').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
 });
 
 document.getElementById('removeImageBtn').addEventListener('click', ()=>{
@@ -4256,8 +4198,6 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
       updateStorageStatus('ok');
     }catch(cloudSaveErr){
       updateStorageStatus('error');
-      console.error('Firebase 儲存失敗:', cloudSaveErr);
-      alert('Firebase 雲端儲存失敗：' + (cloudSaveErr && cloudSaveErr.message ? cloudSaveErr.message : '未知錯誤') + '\n\n這筆資料目前只保留在本機，請不要重新整理；若有圖片，請確認圖片已完成壓縮後再重試。');
       // 雲端寫入失敗時，仍嘗試寫入本機離線儲存作為備援，避免這次編輯完全遺失
       try{ await saveToStorage(); }catch(e){}
     }
