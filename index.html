@@ -596,7 +596,7 @@ window.MathJax = {
   }
 };
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" onload="typesetMath()"></script>
 <!-- Mermaid：支援解答中的 ```mermaid 圖表，例如 flowchart、xychart-beta -->
 <script defer src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" onload="initMermaidRenderer()"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
@@ -3736,11 +3736,27 @@ function repairRenderedMathBlocks(root){
   if(!root) return;
   const containers = root.querySelectorAll('.answer-box');
   containers.forEach(container=>{
+    // 已由 Markdown 建成 math-display，但尚未成功排版的公式也強制正規化一次。
+    // 若已存在 mjx-container，表示 MathJax 已完成該區塊，避免破壞已渲染結果。
+    container.querySelectorAll('.math-display').forEach(mathDiv=>{
+      if(mathDiv.querySelector('mjx-container')) return;
+      let source = (mathDiv.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+      source = source
+        .replace(/^(?:\\+)?\[\s*/, '')
+        .replace(/\s*(?:\\+)?\]$/, '')
+        // display math 裡若又包著 $...$ 或 \(...\)，會造成巢狀分隔符而解析失敗。
+        .replace(/\$([^$\n]+?)\$/g, '$1')
+        .replace(/\\\(([^\n]*?)\\\)/g, '$1');
+      if(source){
+        mathDiv.textContent = '\\[' + sanitizeMathForMathJax(source) + '\\]';
+      }
+    });
+
     let node = container.firstElementChild;
     while(node){
       const nextStart = node.nextElementSibling;
       const opening = (node.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-      if(node.tagName === 'P' && /^(?:\\+)?\[$/.test(opening)){
+      if(/^(?:\\+)?\[$/.test(opening)){
         const collected = [];
         const toRemove = [node];
         let cursor = node.nextElementSibling;
@@ -3748,7 +3764,7 @@ function repairRenderedMathBlocks(root){
         while(cursor){
           const cleaned = (cursor.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
           toRemove.push(cursor);
-          if(cursor.tagName === 'P' && /^(?:\\+)?\]$/.test(cleaned)){
+          if(/^(?:\\+)?\]$/.test(cleaned)){
             closingFound = true;
             break;
           }
