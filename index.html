@@ -387,23 +387,6 @@
     border-radius:3px;
     font-size:0.92em;
   }
-  .answer-box pre{
-    margin:10px 0 14px;
-    padding:12px 14px;
-    overflow-x:auto;
-    white-space:pre;
-    border:1px solid var(--paper-line);
-    border-radius:6px;
-    background:rgba(28,37,65,0.045);
-    color:var(--ink);
-    font:0.92em/1.6 ui-monospace, Menlo, Consolas, 'Microsoft JhengHei', monospace;
-  }
-  .answer-box pre code{
-    padding:0;
-    background:transparent;
-    border-radius:0;
-    font:inherit;
-  }
   .answer-label{
     font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang TC', 'Microsoft JhengHei', Arial, sans-serif;
     font-size:11px;
@@ -564,21 +547,6 @@
     text-align:center;
     overflow-x:auto;
   }
-  .mermaid-chart{
-    margin:14px 0 18px;
-    padding:10px;
-    overflow-x:auto;
-    text-align:center;
-    border:1px solid var(--paper-line);
-    border-radius:7px;
-    background:rgba(255,255,255,0.34);
-  }
-  .mermaid-chart svg{max-width:100%;height:auto;}
-  .mermaid-chart-error{
-    color:#A63A32;
-    text-align:left;
-    white-space:pre-wrap;
-  }
 </style>
 <!-- MathJax：支援題目／解答中的 LaTeX，例如 \\(i^*\\)、\\(E=mc^2\\) -->
 <script>
@@ -596,9 +564,7 @@ window.MathJax = {
   }
 };
 </script>
-<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" onload="typesetMath()"></script>
-<!-- Mermaid：支援解答中的 ```mermaid 圖表，例如 flowchart、xychart-beta -->
-<script defer src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js" onload="initMermaidRenderer()"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -707,10 +673,6 @@ window.MathJax = {
         <img id="image-preview" style="max-width:100%;border:1px solid var(--paper-line);border-radius:6px;">
         <button type="button" class="link-btn danger" id="removeImageBtn" style="display:block;margin-top:6px;">移除圖片</button>
       </div>
-    </div>
-    <div class="field">
-      <label>口訣</label>
-      <textarea class="answer" id="f-mnemonic" placeholder="請輸入協助記憶與背誦的口訣…"></textarea>
     </div>
     <div class="field">
       <label>ChatGPT 解答</label>
@@ -880,9 +842,6 @@ async function firestoreSetImportedBatches(list){
 
 async function firestoreSaveEntry(entry){
   const data = {}; for(const k in entry){ if(k !== 'id') data[k] = entry[k]; }
-  // merge 寫入不會自動移除未出現在 data 裡的舊欄位；使用者按「移除圖片」後，
-  // 必須送出 FieldValue.delete()，否則重新載入時 questionImage 仍會從雲端回來。
-  if(!entry.questionImage){ data.questionImage = firebase.firestore.FieldValue.delete(); }
   await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
 }
 
@@ -963,11 +922,11 @@ const subLists = {
   ],
   politics: [
     '外特三等憲法','外特四等憲法','外特三等比政','外特四等比政','外特三等兩岸','外特四等兩岸',
-    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法三等','移民憲法四等','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
+    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
     '政治學'
   ],
   econstudy: [
-    '外交特考','國際經濟商務人員','高考','原住民特考三等','原住民特考四等','地特三等','地特四等','國安','薦任升等','身心障礙','政大日本研究所','政大俄研所','其他'
+    '外交特考','國際經濟商務人員','國商經貿法組','高考','原住民特考三等','原住民特考四等','地特三等','地特四等','國安','薦任升等','身心障礙','政大日本研究所','政大俄研所','其他'
   ]
 };
 
@@ -3133,7 +3092,6 @@ async function loadEntries(){
       changed = true;
     }
     if(e.category === 'ir' && e.sub === '僑務行政'){ e.sub = '高考僑務'; changed = true; }
-    if(e.category === 'politics' && e.sub === '移民憲法'){ e.sub = '移民憲法三等'; changed = true; }
     if(e.sub === '國際文化行政'){ e.sub = '國際文教行政'; changed = true; }
     if(e.category === 'history' && e.sub === '其他'){ e.sub = '政大日研所'; changed = true; }
     if(e.id && e.id.indexOf('zhengda-history-111-115') !== -1 && e.category === 'history'){
@@ -3636,14 +3594,7 @@ function escapeHtml(s){
 function sanitizeMathForMathJax(math){
   // MathJax/TeX 會把裸 # 視為巨集參數符號；一般貼上的公式若含 #，
   // 自動轉成 \#，避免出現 "You can't use 'macro parameter character #' in math mode"。
-  // 同理，裸 & 會被 TeX 當成表格／方程式的對齊符號，像 R&D 若誤落在數學區塊中
-  // 就會顯示紅色 "Misplaced &"。將未跳脫的 & 自動轉成字面量 \&。
-  return String(math ?? '')
-    // 貼上或經 JSON/Firebase 轉存後，常見 LaTeX 指令被重複跳脫成 \\frac、\\sqrt；
-    // 僅針對明確指令收斂成單一反斜線，不影響公式中原本用於換行的獨立 \\。
-    .replace(/\\\\(?=(?:frac|dfrac|tfrac|sqrt|sum|prod|int|left|right|text|mathrm|mathbf|mathit|overline|underline|begin|end)\b)/g, '\\')
-    .replace(/(^|[^\\])#/g, '$1\\#').replace(/\\\\#/g, '\\#')
-    .replace(/(^|[^\\])&/g, '$1\\&').replace(/\\\\&/g, '\\&');
+  return String(math ?? '').replace(/(^|[^\\])#/g, '$1\\#').replace(/\\\\#/g, '\\#');
 }
 
 function inlineMarkdown(s){
@@ -3728,115 +3679,13 @@ function sanitizeMathTextNodes(root){
   });
 }
 
-// 第二層容錯：部分雲端舊資料在 Markdown 解析後，公式分隔符與公式內容會被拆成：
-// <p>[</p><p>\\frac...</p><p>+</p><p>\\frac...</p><p>]</p>。
-// 此時文字階段的修復可能無法涵蓋所有不可見字元或舊格式，因此直接檢查已生成的 DOM，
-// 把單獨的 [ ... ] 段落重新合併成一個完整 MathJax display block。
-function repairRenderedMathBlocks(root){
-  if(!root) return;
-  const containers = root.querySelectorAll('.answer-box');
-  containers.forEach(container=>{
-    // 已由 Markdown 建成 math-display，但尚未成功排版的公式也強制正規化一次。
-    // 若已存在 mjx-container，表示 MathJax 已完成該區塊，避免破壞已渲染結果。
-    container.querySelectorAll('.math-display').forEach(mathDiv=>{
-      if(mathDiv.querySelector('mjx-container')) return;
-      let source = (mathDiv.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-      source = source
-        .replace(/^(?:\\+)?\[\s*/, '')
-        .replace(/\s*(?:\\+)?\]$/, '')
-        // display math 裡若又包著 $...$ 或 \(...\)，會造成巢狀分隔符而解析失敗。
-        .replace(/\$([^$\n]+?)\$/g, '$1')
-        .replace(/\\\(([^\n]*?)\\\)/g, '$1');
-      if(source){
-        mathDiv.textContent = '\\[' + sanitizeMathForMathJax(source) + '\\]';
-      }
-    });
-
-    let node = container.firstElementChild;
-    while(node){
-      const nextStart = node.nextElementSibling;
-      const opening = (node.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-      if(/^(?:\\+)?\[$/.test(opening)){
-        const collected = [];
-        const toRemove = [node];
-        let cursor = node.nextElementSibling;
-        let closingFound = false;
-        while(cursor){
-          const cleaned = (cursor.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-          toRemove.push(cursor);
-          if(/^(?:\\+)?\]$/.test(cleaned)){
-            closingFound = true;
-            break;
-          }
-          if(cleaned) collected.push(cleaned);
-          cursor = cursor.nextElementSibling;
-        }
-        if(closingFound && collected.length){
-          const mathDiv = document.createElement('div');
-          mathDiv.className = 'math-display';
-          mathDiv.textContent = '\\[' + sanitizeMathForMathJax(collected.join('\n')) + '\\]';
-          container.insertBefore(mathDiv, node);
-          toRemove.forEach(el=>el.remove());
-          node = mathDiv.nextElementSibling;
-          continue;
-        }
-      }
-      node = nextStart;
-    }
-  });
-}
-
-let mathTypesetQueue = Promise.resolve();
-
 function typesetMath(){
   // render() 會動態重建題目／解答內容，因此每次 render 後都讓 MathJax 重新處理 LaTeX。
   // MathJax 尚未載入時直接略過，不影響頁面正常顯示。
   if(window.MathJax && MathJax.typesetPromise){
-    const content = document.getElementById('content');
-    mathTypesetQueue = mathTypesetQueue.then(()=>{
-      repairRenderedMathBlocks(content);
-      sanitizeMathTextNodes(content);
-      MathJax.typesetClear && MathJax.typesetClear([content]);
-      return MathJax.typesetPromise([content]);
-    }).catch(()=>{});
-  }
-}
-
-let mermaidRendererReady = false;
-let mermaidRenderSerial = 0;
-
-function initMermaidRenderer(){
-  if(!window.mermaid) return;
-  if(!mermaidRendererReady){
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: 'strict',
-      theme: 'neutral',
-      xyChart: { chartOrientation: 'vertical' }
-    });
-    mermaidRendererReady = true;
-  }
-  renderMermaidCharts(document.getElementById('content'));
-}
-
-async function renderMermaidCharts(root){
-  if(!root || !window.mermaid) return;
-  if(!mermaidRendererReady) initMermaidRenderer();
-  const nodes = Array.from(root.querySelectorAll('.mermaid-chart:not([data-rendered])'));
-  for(const node of nodes){
-    const source = node.textContent || '';
-    node.setAttribute('data-rendered','pending');
-    try{
-      const id = 'mermaid-chart-' + (++mermaidRenderSerial);
-      const result = await mermaid.render(id, source);
-      node.innerHTML = result.svg;
-      node.setAttribute('data-rendered','true');
-      if(result.bindFunctions) result.bindFunctions(node);
-    }catch(err){
-      node.classList.add('mermaid-chart-error');
-      node.textContent = '圖表語法無法解析，請編輯後再試。';
-      node.setAttribute('data-rendered','error');
-    }
+    sanitizeMathTextNodes(document.getElementById('content'));
+    MathJax.typesetClear && MathJax.typesetClear([document.getElementById('content')]);
+    MathJax.typesetPromise([document.getElementById('content')]).catch(()=>{});
   }
 }
 
@@ -3875,50 +3724,6 @@ function renderMarkdown(text){
   while(i < lines.length){
     const raw = lines[i];
     const line = raw.trim();
-
-    // Markdown fenced code block：支援 ```text、```plaintext、``` 等格式。
-    // 舊版未處理三個反引號，會把「```text」直接顯示在答案中。
-    const fenceMatch = line.match(/^```([A-Za-z0-9_-]*)\s*$/);
-    if(fenceMatch){
-      closeList();
-      flushTable();
-      const codeLines = [];
-      let k = i + 1;
-      while(k < lines.length && !/^```\s*$/.test(lines[k].trim())){
-        codeLines.push(lines[k]);
-        k++;
-      }
-      const fenceLanguage = (fenceMatch[1] || '').toLowerCase();
-      if(fenceLanguage === 'mermaid'){
-        html += '<div class="mermaid-chart">' + escapeHtml(codeLines.join('\n')) + '</div>';
-      }else{
-        const language = fenceLanguage ? ' class="language-' + escapeHtml(fenceLanguage) + '"' : '';
-        html += '<pre><code' + language + '>' + escapeHtml(codeLines.join('\n')) + '</code></pre>';
-      }
-      i = k < lines.length ? k + 1 : k;
-      continue;
-    }
-
-    // 容錯顯示公式分隔符：正常的 \[ / \]、反斜線遺失後的 [ / ]，以及
-    // 重複跳脫的 \\[ / \\] 都視為同一種 display-math 區塊。
-    const isMathOpenLine = s => /^(?:\\+)?\[$/.test(String(s).trim());
-    const isMathCloseLine = s => /^(?:\\+)?\]$/.test(String(s).trim());
-    if(isMathOpenLine(line)){
-      closeList();
-      flushTable();
-      const mathLines = [];
-      let k = i + 1;
-      while(k < lines.length && !isMathCloseLine(lines[k])){
-        if(lines[k].trim() !== '') mathLines.push(lines[k]);
-        k++;
-      }
-      if(k < lines.length && mathLines.length){
-        const mathText = mathLines.join('\n').trim();
-        html += '<div class="math-display">\\[' + escapeHtml(sanitizeMathForMathJax(mathText)) + '\\]</div>';
-        i = k + 1;
-        continue;
-      }
-    }
 
     if(line === ''){
       flushTable();
@@ -4194,16 +3999,11 @@ function render(){
             ${e.questionImage ? `<img class="q-image" src="${e.questionImage}" alt="題目附圖">` : ''}
             <div class="entry-actions">
               <button class="link-btn" onclick="copyQuestion('${e.id}', this)">複製</button>
-              <button class="link-btn" onclick="toggleAnswer('${e.id}','mnemonic')">口訣</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','chatgpt')">ChatGPT 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','gemini')">Gemini 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','claude')">Claude 解答</button>
               <button class="link-btn" onclick="editEntry('${e.id}')">編輯</button>
               <button class="link-btn danger" onclick="deleteEntry('${e.id}')">刪除</button>
-            </div>
-            <div class="answer-box" id="ans-${e.id}-mnemonic">
-              <div class="answer-label">口訣</div>
-              ${e.mnemonic ? renderMarkdown(e.mnemonic) : chineseSafe('（尚未填寫口訣）')}
             </div>
             <div class="answer-box" id="ans-${e.id}-chatgpt">
               <div class="answer-label">ChatGPT 解答</div>
@@ -4237,7 +4037,6 @@ function render(){
 
   // 支援動態內容中的 LaTeX：例如 \(i^*\) 會顯示成 i*（* 為上標）。
   typesetMath();
-  renderMermaidCharts(document.getElementById('content'));
 }
 
 function toggleYear(y){
@@ -4293,15 +4092,11 @@ function toggleAnswer(id, source){
   const box = document.getElementById('ans-'+id+'-'+source);
   if(!box) return;
   const willShow = !box.classList.contains('show');
-  ['mnemonic','chatgpt','gemini','claude'].forEach(s=>{
+  ['chatgpt','gemini','claude'].forEach(s=>{
     const b = document.getElementById('ans-'+id+'-'+s);
     if(b) b.classList.remove('show');
   });
   if(willShow) box.classList.add('show');
-  if(willShow) requestAnimationFrame(()=>{
-    typesetMath();
-    renderMermaidCharts(box);
-  });
 }
 
 function editEntry(id){
@@ -4313,7 +4108,6 @@ function editEntry(id){
   populateSubSelect(e.category, e.sub);
   document.getElementById('f-year').value = e.year;
   document.getElementById('f-question').value = e.question;
-  document.getElementById('f-mnemonic').value = e.mnemonic || '';
   document.getElementById('f-answer-chatgpt').value = e.answerChatGPT || '';
   document.getElementById('f-answer-gemini').value = e.answerGemini || '';
   document.getElementById('f-answer-claude').value = e.answerClaude || '';
@@ -4377,7 +4171,6 @@ document.getElementById('openAdd').addEventListener('click', ()=>{
   populateSubSelect(currentCat, currentSub !== 'all' ? currentSub : undefined);
   document.getElementById('f-year').value = '';
   document.getElementById('f-question').value = '';
-  document.getElementById('f-mnemonic').value = '';
   document.getElementById('f-answer-chatgpt').value = '';
   document.getElementById('f-answer-gemini').value = '';
   document.getElementById('f-answer-claude').value = '';
@@ -4423,7 +4216,6 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const sub = document.getElementById('f-sub').value;
   const year = document.getElementById('f-year').value.trim();
   const question = document.getElementById('f-question').value.trim();
-  const mnemonic = document.getElementById('f-mnemonic').value.trim();
   const answerChatGPT = document.getElementById('f-answer-chatgpt').value.trim();
   const answerGemini = document.getElementById('f-answer-gemini').value.trim();
   const answerClaude = document.getElementById('f-answer-claude').value.trim();
@@ -4438,7 +4230,6 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const e = entries.find(x=>x.id===id);
     if(e){
       e.category = cat; e.sub = sub; e.year = year; e.question = question;
-      e.mnemonic = mnemonic;
       e.answerChatGPT = answerChatGPT; e.answerGemini = answerGemini; e.answerClaude = answerClaude;
       delete e.answer;
       if(currentImageData){ e.questionImage = currentImageData; }
@@ -4449,7 +4240,6 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const newEntry = {
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
       category: cat, sub, year, question,
-      mnemonic,
       answerChatGPT, answerGemini, answerClaude,
       createdAt: Date.now()
     };
