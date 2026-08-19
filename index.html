@@ -675,6 +675,10 @@ window.MathJax = {
       </div>
     </div>
     <div class="field">
+      <label>口訣</label>
+      <textarea class="answer" id="f-mnemonic" placeholder="請輸入協助記憶與背誦的口訣…"></textarea>
+    </div>
+    <div class="field">
       <label>ChatGPT 解答</label>
       <textarea class="answer" id="f-answer-chatgpt" placeholder="請輸入 ChatGPT 的解答內容…"></textarea>
     </div>
@@ -842,6 +846,9 @@ async function firestoreSetImportedBatches(list){
 
 async function firestoreSaveEntry(entry){
   const data = {}; for(const k in entry){ if(k !== 'id') data[k] = entry[k]; }
+  // merge 寫入不會自動移除未出現在 data 裡的舊欄位；使用者按「移除圖片」後，
+  // 必須送出 FieldValue.delete()，否則重新載入時 questionImage 仍會從雲端回來。
+  if(!entry.questionImage){ data.questionImage = firebase.firestore.FieldValue.delete(); }
   await db.collection(ENTRIES_COLLECTION).doc(entry.id).set(data, { merge: true });
 }
 
@@ -922,7 +929,7 @@ const subLists = {
   ],
   politics: [
     '外特三等憲法','外特四等憲法','外特三等比政','外特四等比政','外特三等兩岸','外特四等兩岸',
-    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
+    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法三等','移民憲法四等','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
     '政治學'
   ],
   econstudy: [
@@ -3092,6 +3099,7 @@ async function loadEntries(){
       changed = true;
     }
     if(e.category === 'ir' && e.sub === '僑務行政'){ e.sub = '高考僑務'; changed = true; }
+    if(e.category === 'politics' && e.sub === '移民憲法'){ e.sub = '移民憲法三等'; changed = true; }
     if(e.sub === '國際文化行政'){ e.sub = '國際文教行政'; changed = true; }
     if(e.category === 'history' && e.sub === '其他'){ e.sub = '政大日研所'; changed = true; }
     if(e.id && e.id.indexOf('zhengda-history-111-115') !== -1 && e.category === 'history'){
@@ -3594,7 +3602,11 @@ function escapeHtml(s){
 function sanitizeMathForMathJax(math){
   // MathJax/TeX 會把裸 # 視為巨集參數符號；一般貼上的公式若含 #，
   // 自動轉成 \#，避免出現 "You can't use 'macro parameter character #' in math mode"。
-  return String(math ?? '').replace(/(^|[^\\])#/g, '$1\\#').replace(/\\\\#/g, '\\#');
+  // 同理，裸 & 會被 TeX 當成表格／方程式的對齊符號，像 R&D 若誤落在數學區塊中
+  // 就會顯示紅色 "Misplaced &"。將未跳脫的 & 自動轉成字面量 \&。
+  return String(math ?? '')
+    .replace(/(^|[^\\])#/g, '$1\\#').replace(/\\\\#/g, '\\#')
+    .replace(/(^|[^\\])&/g, '$1\\&').replace(/\\\\&/g, '\\&');
 }
 
 function inlineMarkdown(s){
@@ -3999,11 +4011,16 @@ function render(){
             ${e.questionImage ? `<img class="q-image" src="${e.questionImage}" alt="題目附圖">` : ''}
             <div class="entry-actions">
               <button class="link-btn" onclick="copyQuestion('${e.id}', this)">複製</button>
+              <button class="link-btn" onclick="toggleAnswer('${e.id}','mnemonic')">口訣</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','chatgpt')">ChatGPT 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','gemini')">Gemini 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','claude')">Claude 解答</button>
               <button class="link-btn" onclick="editEntry('${e.id}')">編輯</button>
               <button class="link-btn danger" onclick="deleteEntry('${e.id}')">刪除</button>
+            </div>
+            <div class="answer-box" id="ans-${e.id}-mnemonic">
+              <div class="answer-label">口訣</div>
+              ${e.mnemonic ? renderMarkdown(e.mnemonic) : chineseSafe('（尚未填寫口訣）')}
             </div>
             <div class="answer-box" id="ans-${e.id}-chatgpt">
               <div class="answer-label">ChatGPT 解答</div>
@@ -4092,7 +4109,7 @@ function toggleAnswer(id, source){
   const box = document.getElementById('ans-'+id+'-'+source);
   if(!box) return;
   const willShow = !box.classList.contains('show');
-  ['chatgpt','gemini','claude'].forEach(s=>{
+  ['mnemonic','chatgpt','gemini','claude'].forEach(s=>{
     const b = document.getElementById('ans-'+id+'-'+s);
     if(b) b.classList.remove('show');
   });
@@ -4108,6 +4125,7 @@ function editEntry(id){
   populateSubSelect(e.category, e.sub);
   document.getElementById('f-year').value = e.year;
   document.getElementById('f-question').value = e.question;
+  document.getElementById('f-mnemonic').value = e.mnemonic || '';
   document.getElementById('f-answer-chatgpt').value = e.answerChatGPT || '';
   document.getElementById('f-answer-gemini').value = e.answerGemini || '';
   document.getElementById('f-answer-claude').value = e.answerClaude || '';
@@ -4171,6 +4189,7 @@ document.getElementById('openAdd').addEventListener('click', ()=>{
   populateSubSelect(currentCat, currentSub !== 'all' ? currentSub : undefined);
   document.getElementById('f-year').value = '';
   document.getElementById('f-question').value = '';
+  document.getElementById('f-mnemonic').value = '';
   document.getElementById('f-answer-chatgpt').value = '';
   document.getElementById('f-answer-gemini').value = '';
   document.getElementById('f-answer-claude').value = '';
@@ -4216,6 +4235,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const sub = document.getElementById('f-sub').value;
   const year = document.getElementById('f-year').value.trim();
   const question = document.getElementById('f-question').value.trim();
+  const mnemonic = document.getElementById('f-mnemonic').value.trim();
   const answerChatGPT = document.getElementById('f-answer-chatgpt').value.trim();
   const answerGemini = document.getElementById('f-answer-gemini').value.trim();
   const answerClaude = document.getElementById('f-answer-claude').value.trim();
@@ -4230,6 +4250,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const e = entries.find(x=>x.id===id);
     if(e){
       e.category = cat; e.sub = sub; e.year = year; e.question = question;
+      e.mnemonic = mnemonic;
       e.answerChatGPT = answerChatGPT; e.answerGemini = answerGemini; e.answerClaude = answerClaude;
       delete e.answer;
       if(currentImageData){ e.questionImage = currentImageData; }
@@ -4240,6 +4261,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const newEntry = {
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
       category: cat, sub, year, question,
+      mnemonic,
       answerChatGPT, answerGemini, answerClaude,
       createdAt: Date.now()
     };
