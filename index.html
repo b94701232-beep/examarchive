@@ -3728,13 +3728,61 @@ function sanitizeMathTextNodes(root){
   });
 }
 
+// 第二層容錯：部分雲端舊資料在 Markdown 解析後，公式分隔符與公式內容會被拆成：
+// <p>[</p><p>\\frac...</p><p>+</p><p>\\frac...</p><p>]</p>。
+// 此時文字階段的修復可能無法涵蓋所有不可見字元或舊格式，因此直接檢查已生成的 DOM，
+// 把單獨的 [ ... ] 段落重新合併成一個完整 MathJax display block。
+function repairRenderedMathBlocks(root){
+  if(!root) return;
+  const containers = root.querySelectorAll('.answer-box');
+  containers.forEach(container=>{
+    let node = container.firstElementChild;
+    while(node){
+      const nextStart = node.nextElementSibling;
+      const opening = (node.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+      if(node.tagName === 'P' && /^(?:\\+)?\[$/.test(opening)){
+        const collected = [];
+        const toRemove = [node];
+        let cursor = node.nextElementSibling;
+        let closingFound = false;
+        while(cursor){
+          const cleaned = (cursor.textContent || '').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+          toRemove.push(cursor);
+          if(cursor.tagName === 'P' && /^(?:\\+)?\]$/.test(cleaned)){
+            closingFound = true;
+            break;
+          }
+          if(cleaned) collected.push(cleaned);
+          cursor = cursor.nextElementSibling;
+        }
+        if(closingFound && collected.length){
+          const mathDiv = document.createElement('div');
+          mathDiv.className = 'math-display';
+          mathDiv.textContent = '\\[' + sanitizeMathForMathJax(collected.join('\n')) + '\\]';
+          container.insertBefore(mathDiv, node);
+          toRemove.forEach(el=>el.remove());
+          node = mathDiv.nextElementSibling;
+          continue;
+        }
+      }
+      node = nextStart;
+    }
+  });
+}
+
+let mathTypesetQueue = Promise.resolve();
+
 function typesetMath(){
   // render() 會動態重建題目／解答內容，因此每次 render 後都讓 MathJax 重新處理 LaTeX。
   // MathJax 尚未載入時直接略過，不影響頁面正常顯示。
   if(window.MathJax && MathJax.typesetPromise){
-    sanitizeMathTextNodes(document.getElementById('content'));
-    MathJax.typesetClear && MathJax.typesetClear([document.getElementById('content')]);
-    MathJax.typesetPromise([document.getElementById('content')]).catch(()=>{});
+    const content = document.getElementById('content');
+    mathTypesetQueue = mathTypesetQueue.then(()=>{
+      repairRenderedMathBlocks(content);
+      sanitizeMathTextNodes(content);
+      MathJax.typesetClear && MathJax.typesetClear([content]);
+      return MathJax.typesetPromise([content]);
+    }).catch(()=>{});
   }
 }
 
