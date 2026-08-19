@@ -3611,10 +3611,26 @@ function inlineMarkdown(s){
   protectedText = protectedText.replace(/\$(?!\$)(?:\\.|[^$\n])*?\$(?!\$)/g, stashMath);
   protectedText = protectedText.replace(/\\\[[\s\S]*?\\\]/g, stashMath);
 
+  // 先保護 Markdown 跳脫星號（\*）。例如 ChatGPT 常輸出：
+  // **XS\* (Foreign Export Supply)**。若不先保護，粗體 regex 會把 \* 裡的 *
+  // 誤認為 Markdown 控制字元，最後畫面會直接露出 **。
+  const escapedStarTokens = [];
+  protectedText = protectedText.replace(/\\\*/g, ()=>{
+    const token = `@@ESCAPED_STAR_${escapedStarTokens.length}@@`;
+    escapedStarTokens.push('*');
+    return token;
+  });
+
   let out = escapeHtml(protectedText);
   out = out.replace(/`([^`]+?)`/g, '<code>$1</code>');
-  out = out.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+  // 粗體允許內容中包含已保護的 escaped star token。
+  out = out.replace(/\*\*([\s\S]*?)\*\*/g, '<strong>$1</strong>');
   out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, '$1<em>$2</em>');
+
+  // 還原被跳脫的字面星號。
+  escapedStarTokens.forEach((ch, idx)=>{
+    out = out.replace(`@@ESCAPED_STAR_${idx}@@`, ch);
+  });
 
   // 還原數學片段；仍先做 HTML escape，讓 MathJax 安全接手解析。
   mathTokens.forEach((math, idx)=>{
