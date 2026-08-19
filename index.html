@@ -3591,6 +3591,12 @@ function escapeHtml(s){
   return div.innerHTML;
 }
 
+function sanitizeMathForMathJax(math){
+  // MathJax/TeX 會把裸 # 視為巨集參數符號；一般貼上的公式若含 #，
+  // 自動轉成 \#，避免出現 "You can't use 'macro parameter character #' in math mode"。
+  return String(math ?? '').replace(/(^|[^\\])#/g, '$1\\#');
+}
+
 function inlineMarkdown(s){
   // 先保護 LaTeX，再處理 Markdown。
   // 原本直接解析 *斜體*，會把 \varepsilon^{*}、t^{*} 這類公式中的星號誤吃掉，
@@ -3645,7 +3651,7 @@ function inlineMarkdown(s){
 
   // 還原數學片段；仍先做 HTML escape，讓 MathJax 安全接手解析。
   mathTokens.forEach((math, idx)=>{
-    out = out.replace(`@@MATH_TOKEN_${idx}@@`, escapeHtml(math));
+    out = out.replace(`@@MATH_TOKEN_${idx}@@`, escapeHtml(sanitizeMathForMathJax(math)));
   });
   return out;
 }
@@ -3728,7 +3734,7 @@ function renderMarkdown(text){
       }
       if(k < lines.length && lines[k].trim() === '\\]'){
         const mathText = mathLines.join('\n').trim();
-        html += '<div class="math-display">\\[' + escapeHtml(mathText) + '\\]</div>';
+        html += '<div class="math-display">\\[' + escapeHtml(sanitizeMathForMathJax(mathText)) + '\\]</div>';
         i = k + 1;
         continue;
       }
@@ -3746,7 +3752,7 @@ function renderMarkdown(text){
       }
       if(k < lines.length && lines[k].trim() === '$$'){
         const mathText = mathLines.join('\n').trim();
-        html += '<div class="math-display">\\[' + escapeHtml(mathText) + '\\]</div>';
+        html += '<div class="math-display">\\[' + escapeHtml(sanitizeMathForMathJax(mathText)) + '\\]</div>';
         i = k + 1;
         continue;
       }
@@ -3766,7 +3772,7 @@ function renderMarkdown(text){
       }
       if(k < lines.length && lines[k].trim() === ']' && mathLines.length){
         const mathText = mathLines.join(' ');
-        html += '<div class="math-display">\\[' + escapeHtml(mathText) + '\\]</div>';
+        html += '<div class="math-display">\\[' + escapeHtml(sanitizeMathForMathJax(mathText)) + '\\]</div>';
         i = k + 1;
         continue;
       }
