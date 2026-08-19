@@ -675,6 +675,10 @@ window.MathJax = {
       </div>
     </div>
     <div class="field">
+      <label>口訣</label>
+      <textarea class="answer" id="f-mnemonic" placeholder="請輸入協助記憶與背誦的口訣…"></textarea>
+    </div>
+    <div class="field">
       <label>ChatGPT 解答</label>
       <textarea class="answer" id="f-answer-chatgpt" placeholder="請輸入 ChatGPT 的解答內容…"></textarea>
     </div>
@@ -4003,11 +4007,16 @@ function render(){
             ${e.questionImage ? `<img class="q-image" src="${e.questionImage}" alt="題目附圖">` : ''}
             <div class="entry-actions">
               <button class="link-btn" onclick="copyQuestion('${e.id}', this)">複製</button>
+              <button class="link-btn" onclick="toggleAnswer('${e.id}','mnemonic')">口訣</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','chatgpt')">ChatGPT 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','gemini')">Gemini 解答</button>
               <button class="link-btn" onclick="toggleAnswer('${e.id}','claude')">Claude 解答</button>
               <button class="link-btn" onclick="editEntry('${e.id}')">編輯</button>
               <button class="link-btn danger" onclick="deleteEntry('${e.id}')">刪除</button>
+            </div>
+            <div class="answer-box" id="ans-${e.id}-mnemonic">
+              <div class="answer-label">口訣</div>
+              ${e.mnemonic ? renderMarkdown(e.mnemonic) : chineseSafe('（尚未填寫口訣）')}
             </div>
             <div class="answer-box" id="ans-${e.id}-chatgpt">
               <div class="answer-label">ChatGPT 解答</div>
@@ -4096,7 +4105,7 @@ function toggleAnswer(id, source){
   const box = document.getElementById('ans-'+id+'-'+source);
   if(!box) return;
   const willShow = !box.classList.contains('show');
-  ['chatgpt','gemini','claude'].forEach(s=>{
+  ['mnemonic','chatgpt','gemini','claude'].forEach(s=>{
     const b = document.getElementById('ans-'+id+'-'+s);
     if(b) b.classList.remove('show');
   });
@@ -4112,6 +4121,7 @@ function editEntry(id){
   populateSubSelect(e.category, e.sub);
   document.getElementById('f-year').value = e.year;
   document.getElementById('f-question').value = e.question;
+  document.getElementById('f-mnemonic').value = e.mnemonic || '';
   document.getElementById('f-answer-chatgpt').value = e.answerChatGPT || '';
   document.getElementById('f-answer-gemini').value = e.answerGemini || '';
   document.getElementById('f-answer-claude').value = e.answerClaude || '';
@@ -4175,6 +4185,7 @@ document.getElementById('openAdd').addEventListener('click', ()=>{
   populateSubSelect(currentCat, currentSub !== 'all' ? currentSub : undefined);
   document.getElementById('f-year').value = '';
   document.getElementById('f-question').value = '';
+  document.getElementById('f-mnemonic').value = '';
   document.getElementById('f-answer-chatgpt').value = '';
   document.getElementById('f-answer-gemini').value = '';
   document.getElementById('f-answer-claude').value = '';
@@ -4220,6 +4231,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   const sub = document.getElementById('f-sub').value;
   const year = document.getElementById('f-year').value.trim();
   const question = document.getElementById('f-question').value.trim();
+  const mnemonic = document.getElementById('f-mnemonic').value.trim();
   const answerChatGPT = document.getElementById('f-answer-chatgpt').value.trim();
   const answerGemini = document.getElementById('f-answer-gemini').value.trim();
   const answerClaude = document.getElementById('f-answer-claude').value.trim();
@@ -4234,6 +4246,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const e = entries.find(x=>x.id===id);
     if(e){
       e.category = cat; e.sub = sub; e.year = year; e.question = question;
+      e.mnemonic = mnemonic;
       e.answerChatGPT = answerChatGPT; e.answerGemini = answerGemini; e.answerClaude = answerClaude;
       delete e.answer;
       if(currentImageData){ e.questionImage = currentImageData; }
@@ -4244,6 +4257,7 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
     const newEntry = {
       id: 'e' + Date.now() + Math.random().toString(36).slice(2,7),
       category: cat, sub, year, question,
+      mnemonic,
       answerChatGPT, answerGemini, answerClaude,
       createdAt: Date.now()
     };
