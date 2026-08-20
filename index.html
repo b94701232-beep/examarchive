@@ -922,7 +922,7 @@ const subLists = {
   ],
   politics: [
     '外特三等憲法','外特四等憲法','外特三等比政','外特四等比政','外特三等兩岸','外特四等兩岸',
-    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
+    '司律憲法','海巡三等憲法','海巡四等憲法','移民三等憲法','移民四等憲法','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
     '政治學'
   ],
   econstudy: [
@@ -3813,6 +3813,7 @@ async function loadEntries(){
     if(e.category === 'intl' && e.sub === '司法官海洋組'){ e.sub = '司法官律師海商法與海洋法'; changed = true; }
     if(e.category === 'intl' && e.sub === '中央大學碩士班'){ e.sub = '中央警察大學碩士班'; changed = true; }
     if(e.category === 'ir' && e.sub === '新聞'){ e.sub = '新聞三等'; changed = true; }
+    if(e.category === 'politics' && e.sub === '移民憲法'){ e.sub = '移民四等憲法'; changed = true; }
     if(e.category === 'ir' && e.sub === '地特'){ e.sub = '地特三等'; changed = true; }
     if(e.sub === '台大研究所'){ e.sub = '台大政治所'; changed = true; }
     if(e.sub === '政大研究所'){ e.sub = '政大外交所'; changed = true; }
