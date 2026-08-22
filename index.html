@@ -2008,7 +2008,7 @@ const SEED_INTL_SIFAGUAN = [
 {"category": "intl", "sub": "司法官律師海商法與海洋法", "year": "104", "question": "1982年《聯合國海洋法公約》多次出現「主權權利」（sovereign rights）之用語，試說明：1.主權權利之意義；2.主權權利與領土主權（territorial sovereignty）有何區別？（20分）", "answer": ""}
 ];
 
-// ===== 匯入批次：國際關係 台大研究所（國際政治）100～115年試題 =====
+// ===== 匯入批次：國際關係 台大研究所（國際政治）100～115年試題；98～99年另以批次55補入 =====
 const IMPORT_BATCH_ID_28 = 'ntu-ir-100-115';
 const SEED_IR_NTU = [
 {"category": "ir", "sub": "台大政治所", "year": "115", "question": "一、白宮網站於2026年1月4日引述國務卿盧比歐（M. Rubio）接受美國NBC News採訪時做出的如下評論：「This is the Western Hemisphere. This is where we live --- and we're not going to allow the Western Hemisphere to be a base of operation for adversaries, competitors, and rivals of the United States.」請問他做出此評論是回應哪項近期發生的重大國際事件？他提出的「West Hemisphere」概念在美國外交政策發展史上有何重要意涵？並請運用國際關係理論，評論這一美國對外政策面的新發展，將有何影響？（25%）", "answer": ""},
@@ -2881,6 +2881,69 @@ const SEED_ECONSTUDY_PUKAO = [
     "sub": "普考",
     "year": "112",
     "question": "四、2023年4月24日新聞以「臺韓匯率指數『死亡交叉』擴大」為題，指出BIS公布3月新臺幣實質匯率指數為98.62，韓元為94.79。請問：\n\n（一）何謂實質匯率？（10分）\n（二）實質匯率下降表示何意？（10分）\n（三）當絕對購買力平價理論成立時，實質匯率等於多少？（10分）",
+    "answer": ""
+  }
+];
+
+
+
+// ===== 匯入批次：台大政治所 國際政治 98～99年試題 =====
+const IMPORT_BATCH_ID_55 = 'ntu-ir-98-99';
+const SEED_IR_NTU_98_99 = [
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "98",
+    "question": "一、簡答題（每題5%）\n\n1-1. 為什麼可以說「債務是北方對南方的另一次掠奪」？\n\n1-2. 請簡述杭廷頓（Samuel P. Huntington）的「文明衝突論」，並簡評。\n\n1-3. 2008年8月俄羅斯與喬治亞（Georgia）的衝突及其發展？\n\n1-4. 女性主義對於國際關係的看法？\n\n1-5. 試述全球化的成因？\n\n1-6. 請解釋歐洲統合的理論？\n\n1-7. 請寫下從1990年代迄今所發生的全球金融危機，並簡述其理由。",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "98",
+    "question": "二、申論題（15%）\n\n請從現實主義、新自由制度主義與社會建構主義的「安全觀」來討論馬英九政府的對外政策（可包括外交、大陸、國防、經貿……等）政策。請提出你的觀察、批評與建議。",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "98",
+    "question": "三、試就國際關係理論自由主義學派（Liberal Institutionalism）的代表性學者 Robert Keohane 之三本著作：Power and Interdependence (1977)、After Hegemony (1984)、Power and Governance in a Partially Globalized World (2002) 之主要論點加以評述之。（25%）",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "98",
+    "question": "四、國際關係理論的主要學派理性主義（Rationalism）和反思主義（Reflectivism）都承認觀念（Ideas）的作用，試論上述兩派學說之差異所在。（25%）",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "99",
+    "question": "一、「沙俄」、「帝俄」、「蘇俄」與「俄羅斯」，這四個名詞有何異同？導致它們出現變化的原因何在？請以相同或不同的國關理論詮釋之。（25%）",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "99",
+    "question": "二、美國揚言要出兵打擊伊朗，理由是伊朗企圖製造核武。但是北韓已經確定擁有核武，美國是否會出兵攻擊北韓？會與不會的理由分別為何？（25%）",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "99",
+    "question": "三、試就國際關係理論中有關本體論、認識論和方法論之理論定位、爭辯與發展說明之。（25%）",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "台大政治所",
+    "year": "99",
+    "question": "四、試以國際關係的三種主流理論觀點，就兩岸關係的本質及現況加以比較分析。（25%）",
     "answer": ""
   }
 ];
@@ -4394,7 +4457,8 @@ async function loadEntries(){
     { id: IMPORT_BATCH_ID_51, data: SEED_IR_GONGFEI },
     { id: IMPORT_BATCH_ID_52, data: SEED_IR_NEWS_PUKAO },
     { id: IMPORT_BATCH_ID_53, data: SEED_HISTORY_ZHENGDA_JPS },
-    { id: IMPORT_BATCH_ID_54, data: SEED_HISTORY_ZHENGDA_JPS_103 }
+    { id: IMPORT_BATCH_ID_54, data: SEED_HISTORY_ZHENGDA_JPS_103 },
+    { id: IMPORT_BATCH_ID_55, data: SEED_IR_NTU_98_99 }
   ];
 
   if(batchesToImport.some(b => !importedBatches.includes(b.id))){
