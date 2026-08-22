@@ -780,6 +780,355 @@ async function fetchAllEntriesFromFirestoreServer(){
   return list;
 }
 
+
+// ===== 匯入批次：政大國際研究英語碩士學位學程 國際關係／國際現勢（101～115年） =====
+const IMPORT_BATCH_ID_58 = "nccu-impis-ir-current-affairs-101-115-v1";
+const SEED_IR_NCCU_IMPIS_101_115 = [
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "101",
+    "question": "【考科：國際關係】\n1. Introduce briefly “the Arab Spring.” Be sure to provide your understanding about the series of events and to explain its implications for international relations. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "101",
+    "question": "【考科：國際關係】\n2. There is a debate over whether the “G2 (Group of Two)” is in the making in the International Relations scholarship in recent years. Please briefly discuss the arguments from both pros and cons. Do you agree with which side? Why? (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "101",
+    "question": "【考科：國際關係】\n3. Discuss from an international political economy (IPE) perspective the possible consequences in association with increasingly volatile and speculative capital flows worldwide. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "101",
+    "question": "【考科：國際關係】\n4. Introduce briefly the background of the United Nations Millennium Development Goals. Do you agree on the argument that these goals are still too difficult to achieve? Why? (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "102",
+    "question": "【考科：國際關係】\n1. How has the role of the “state”—particularly its relations with the “society”—changed under globalization? What is the impact of globalization on democracy and social justice? Please draw examples from current, on-going events with emphasis on international trade and international financial market. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "102",
+    "question": "【考科：國際關係】\n2. What is non-traditional security? Describe the background in which the concept of non-traditional security emerged and evolved. Provide three examples drawn from current world affairs that take place in different parts of the world to illustrate the importance of non-traditional security. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "102",
+    "question": "【考科：國際關係】\n3. Please point out three types of terrorism based on ideology, and for each type, indicate one terrorist group that can better represent it and explain such a group in brief. (30%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "102",
+    "question": "【考科：國際關係】\n4. Please use 80-to-120 English words each to explain the following terms commonly seen in the study of international relations:\n(1) R2P (10%)\n(2) MDGs (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "103",
+    "question": "【考科：國際現勢】\n1. Illustrate how changes in demography have influenced the development of contemporary international relations. (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "103",
+    "question": "【考科：國際現勢】\n2. What are the prospects and challenges of the peacekeeping operations of the United Nations? (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "103",
+    "question": "【考科：國際現勢】\n3. Public diplomacy has become a widely discussed topic in contemporary diplomacy. Nicholas Cull identifies 5 major approaches to the practice of public diplomacy. Define what public diplomacy is. Then indicate 2 of the 5 approaches, explain them in brief, and support them with 2 real-world cases each. Please be noted you can only use Taiwan’s or mainland Chinese case once. (30%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "103",
+    "question": "【考科：國際現勢】\n4. What does “governance without government” stand for? Please use a non-East Asian region as an example to assess its applicability and effectiveness. (30%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "104",
+    "question": "【考科：國際現勢】\n1. Explain in brief what these abbreviations and terminologies stand for? If it is an abbreviation, spell out its full name in your answer as well. (30%)\n(a) WIPO\n(b) MDGs\n(c) “One Belt, One Road”\n(d) “P5+1” (or “E3+3”)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "104",
+    "question": "【考科：國際現勢】\n2. Nowadays there is an unconventional technique that heats sedimentary rocks containing solid bituminous materials that are released as petroleum-like liquids in a chemical way of pyrolysis, for the acquisition of some sort of important energy. What is this important energy generally called? Identify briefly the pros and cons as to this unconventional technique, and analyze its potential impact on contemporary international political economy. (30%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "104",
+    "question": "【考科：國際現勢】\n3. What are the Russia’s and U.S.’s respective major assertions on the ongoing Ukraine/Crimea dispute? (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "104",
+    "question": "【考科：國際現勢】\n4. Do you agree on the “clashes of civilizations” argument? Why? State your reasons and use two recent real-world examples to support your own answer. (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "105",
+    "question": "【考科：國際現勢】\n1. The Telegraph’s article “Beware Self-fulfilling Prophecy of Crashing Markets, IMF Warns as Growth is Cut Again” (January 16, 2016) ends with IMF Chief Economist Maurice Obstfeld’s words “We may be in for a bumpy ride this year.” Try to answer with major possibilities and your fact-based imagination why this news and Obstfeld would make arguments concerning the 2016 world economy that way. (30%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "105",
+    "question": "【考科：國際現勢】\n2. United States Vice President Joe Biden said that “long accused of hedging its bets with the Islamic State and allowing passage across its border, Turkey has taken some very important steps to improve” the situation, and that “American coalition aircraft... have ‘ramped up the air campaign against ISIL targets to the highest tempo since the beginning’ of the airstrikes in the fall of 2014.” (Washington Post, January 23, 2016) Comment on his statement from international politics and international security perspectives. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "105",
+    "question": "【考科：國際現勢】\n3. What are the principal results of last year’s “Doha Round” negotiations? Illustrate the achievements and obstacles. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "105",
+    "question": "【考科：國際現勢】\n4. Use up to 100 English words to spell out and account for the following commonly used terms in world affairs:\n(1) O.S.C.E. (10%)\n(2) U.N.F.C.C.C. (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "106",
+    "question": "【考科：國際現勢】\n1. Please first define isolationism and multilateralism. Then, use a contemporary example of international relations, respectively, to illustrate these two concepts. (25%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "106",
+    "question": "【考科：國際現勢】\n2. Who is the newly appointed Secretary-General of the United Nations? (5%) According to the available information, what are the most urgent dimensions on the international front he’s argued? In addition to international peace, please name two to explain why, in brief. (10%) With regard to the United Nations institution itself, how does s/he view it? Please provide a short answer as well. (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "106",
+    "question": "【考科：國際現勢】\n3. Please analyze the possible linkages between human rights/security and the trans-border or international trade in S.A.L.W. (15%) Use a recent case to point out either positive or negative development in such trade activities. (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "106",
+    "question": "【考科：國際現勢】\n4. Below is a chart regarding the total official and private flows in development assistance (in million U.S. dollars, using 2014 as the base year; 2000–2015). What does D.A.C. stand for and to which international organization does it belong? (5%) Starting from this chart, please explain the general trend of development assistance provided by D.A.C. countries. Why so? (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "107",
+    "question": "【考科：國際現勢】\n1. Explain the following terms, including the related debates in brief between the people with different opinions.\n(1) China’s “One Belt, One Road” Strategy (10%)\n(2) Brexit (10%)\n(3) Globalization (10%)\n(4) Regional Integration (10%)\n(5) Global Warming (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "107",
+    "question": "【考科：國際現勢】\n2. Based on the theories of comparative politics and political economy, please explain the possible impacts of oil trade on society and domestic politics in the following three sets of countries:\n(1) The oil producers (identify some of them) (10%)\n(2) The oil consumers (identify some of them) (10%)\n(3) China (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "107",
+    "question": "【考科：國際現勢】\n3. One of the ongoing events in the domestic politics of many advanced democratic countries is the debate over whether nations should favor “internationalism” or “nationalism,” or, in other words, the political struggle between “the internationalizing coalition” and “the backlash coalition.” Please explain:\n(1) Why have these issues become a hot topic in the recent years? (10%)\n(2) What should the governments do in order to overcome the problems that give rise to these debates? (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "108",
+    "question": "【考科：國際現勢】\nQuestion 1 (50%). Analyze the current situation with regard to one of the following topics by employing one of the main schools of international relations analysis (realism, liberal internationalism, constructivism, critical theory):\n• The current situation regarding Brexit and its impact on the European Union;\n• The current situation in Syria;\n• International efforts to address climate change.",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "108",
+    "question": "【考科：國際現勢】\nQuestion 2 (50%). Summarize, analyze, and discuss the following assessment of the Pacific Region in the context of cross-strait relations between Taiwan and the PRC. Do you agree with this assessment? Why or why not? If it is correct, what does it mean for cross-strait relations?\n\n“The Indo-Pacific region continues its drift toward a Hobbesian order. The United States and China are increasingly asking countries in the region to choose between them, pivoting from an era of broader multilateralism and integration.\n\nThe Trump administration’s tough line on China lacks an organizing framework beyond ‘strategic competition.’ U.S. calls for a ‘free and open’ Indo-Pacific have been welcomed, but the failure of President Trump to attend the East Asia Summit and the U.S.-ASEAN Summit in Singapore and the 2018 Asia Pacific Economic Cooperation (APEC) Economic Leaders’ Meeting in Papua New Guinea caused deep concern about U.S. commitment to the region.... So too, increased U.S. military presence and the introduction of new initiatives in infrastructure development and cybersecurity cooperation are useful, but the absence of an economic framework to replace the Trans-Pacific Partnership (TPP) remains the most important policy matter from the region’s perspective.\n\nChina, for its part, continues to assert itself through territorial claims and island building activities in the South China Sea, the coercive politics of the Belt and Road Initiative, and malign influence in its neighbors’ internal affairs and democratic processes. But there are no questions in the region that it is there to stay.\n\nThe recent visit by Japanese prime minister Shinzo Abe to Beijing—notable as the first in seven years—was a vivid example of how U.S. allies and partners in the region feel they must find a modus vivendi with China that doesn’t rely on continued U.S. presence and commitment. So too, the recent rapprochement with China by Singapore and the Philippines shows how the region’s concern over U.S. ‘stick-to-it-ness’ is translating to decisions that countries hope better position them to live with a powerful and increasingly assertive resident power.”\n\n(Samuel Brannen, Center for Strategic & International Studies)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "109",
+    "question": "【考科：國際現勢】\nI. Short Answers — 1. 5G technology. Please briefly define the term. (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "109",
+    "question": "【考科：國際現勢】\nI. Short Answers — 2. Paris Agreement. Please briefly define the term. (20%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "109",
+    "question": "【考科：國際現勢】\nII. Essay Questions — 1. The Belt and Road Initiative, including China’s Maritime Silk Road Initiative (MSRI) and the Silk Road Economic Belt (SREB), are contemporary connectivity projects entailing massive infrastructure components and cooperative strategies. Please elaborate the key points of MSRI and SREB accordingly, and explain the policy implications on both strategic blueprints under China’s global governance perspective. (30%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "109",
+    "question": "【考科：國際現勢】\nII. Essay Questions — 2. On the heels of an increase in regionalism, states covered by Free Trade Agreements (FTAs) have strong incentives to create new and join existing FTAs. One of the most appropriate examples is the creation of Regional Comprehensive Economic Partnership (RCEP), posing it as an economic bloc led primarily by ASEAN countries.\n(I) Please briefly elaborate your understanding of RCEP, and also discuss the major strategic concerns from the great powers (China, Japan, and the US) toward the economic and security relations with RCEP members. (15%)\n(II) Please point out the differences between RCEP and the Comprehensive and Progressive Trans-Pacific Partnership (CPTPP). (15%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "110",
+    "question": "【考科：國際現勢】\n1. Using one of the major schools of international relations theory (realism, liberal internationalism, constructivism, critical theory) as your theoretical foundation, discuss and analyze at least three ways in which the Covid 19 pandemic has impacted the world in general or your country in particular. What has been the most important impact? (50%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "110",
+    "question": "【考科：國際現勢】\n2. Aside from the Covid pandemic, and again using one of the major schools of international relations theory, discuss and analyze what you think are the two most important issues in the world today. What are possible solutions to these problems? (50%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "111",
+    "question": "【考科：國際現勢】\n1. Using as the foundation for your analysis one of the major schools of contemporary international relations theory (realism, liberal internationalism, constructivism, critical theory), assess the impact of the conflict between Taiwan and the PRC on the global system. Do the same with regard to the conflict between the Ukraine and Russia, then compare and contrast the respective impacts. Which actors have been drawn into these conflicts, and which actors are likely to be drawn in? Which of the two conflicts is more likely to result in a large-scale war in the near to medium term? Why? (60%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "111",
+    "question": "【考科：國際現勢】\n2. Compare and contrast the effects on the global system of current and future pandemics (such as the Covid pandemic) with those of global warming. In which areas of the global system will each (pandemics and global warming) have the most impact? Who will be most affected by each, and what will be the likely consequences for those most affected? (40%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "112",
+    "question": "【考科：國際現勢】\n1. Climate change has become a major concern for governments and societies around the world. Different actions have been taken by multiple actors in the international system in order to cope with this global pressing issue. Using some of the main concepts and ideas in the realist school of international relations (conflict, resource nationalism, protectionism, energy security, etc.), describe some of the ongoing developments that can be observed in the area of climate change. Afterwards, use some of the main concepts and ideas in the liberal school of international relations (cooperation, agreements, institutions, cultural change, etc.), to also analyze other current phenomena related to world politics and climate change. (50%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "112",
+    "question": "【考科：國際現勢】\n2. Use one of the major schools of international relations (realism, liberalism, constructivism, critical theory) to analyze the situation of increasing tension between both sides of the Taiwan Strait, and the immediate causes and consequences of the Fourth Taiwan Strait Crisis. Based on the theory that you chose, what can we expect for the short and medium term to happen? (40%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "112",
+    "question": "【考科：國際現勢】\n3. Besides the topics addressed in the previous questions, what is another recent international news story that has caught your attention these days? Why? Try to frame that problem in an academic way (main actors involved, motivations, causes, consequences, etc.) (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "113",
+    "question": "【考科：國際現勢】\n1. The ongoing conflict in Palestine, after the Hamas’ attacks on Israel, and the latter’s incursion into Gaza, has attracted the attention of international media and commentators around the world. A permanent solution to the conflict seems extremely difficult at the moment, but the proposals to solve it have come from different theoretical approaches in international relations (IR). Thinking about the main postulates and ideas in the mainstream theories of IR, such as realism (hard power, national interest, alliances, asymmetric warfare, etc.) and liberalism (diplomacy, agreements, institutions, soft power, etc.), describe some of the different approaches that have been offered to find a solution to this problem. (50%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "113",
+    "question": "【考科：國際現勢】\n2. We recently had elections in Taiwan, and a new president will be inaugurated later this year. We will also have elections in the United States this November. Use one of the major schools of international relations (realism, liberalism, constructivism, critical theory) to analyze the situation of increasing tension between both sides of the Taiwan Strait, the closer ties between Taiwan and the United States, and the growing rivalry between Washington and Beijing. Based on the theory that you chose, what do you think are the changes and continuities that we could expect in terms of those new governments’ foreign policies? (40%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "113",
+    "question": "【考科：國際現勢】\n3. Besides the topics of the war in Gaza and cross-strait relations, what is another recent international news story that has caught your attention these weeks? Why? Try to frame that problem in an academic way (main actors involved, motivations, causes, consequences, etc.) (10%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "114",
+    "question": "【考科：國際現勢】\n1. The recent election of Donald Trump as president of the United States has made scholars and commentators around the world to discuss about the potential implications for the future of the existing international order. Trump’s constant threats to impose tariffs on allies and adversaries alike, signal an increasing geopolitical approach to economic issues. Thinking about the main postulates and ideas in the mainstream theories of International Relations, such as realism (hard power, national interest, alliances, asymmetric warfare, etc.) and liberalism (diplomacy, agreements, institutions, soft power, etc.), describe some of the most challenging issues that the world is expected to face under a new Trump Administration, and what are some probable paths that states can follow to ensure stability in their relations. (45%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "114",
+    "question": "【考科：國際現勢】\n2. During the past few years, so-called emerging countries are gaining notoriety at the international stage. They tend to push for more representation and have become more vocal in the pursuit of their interests. Use one of the major schools of international relations (realism, liberalism, constructivism, critical theory) to analyze the evolution of the BRICS and its increasing relevance among Global South countries. Based on the theory that you chose, what do you think are the advantages and challenges we could expect from a continued expansion of the BRICS and its related institutions and agreements? (40%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "114",
+    "question": "【考科：國際現勢】\n3. Regarding the domestic situation of Taiwan, think about a recent news story that has caught your attention these couple of weeks, and identify how it has consequences for the rest of the world? Why did you choose that example? Try to frame that problem in an academic way (main actors involved, motivations, causes, consequences, etc.) (15%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "115",
+    "question": "【考科：國際現勢】\n1. On April 2, 2025, the president of the United States, Donald Trump, announced the imposition of “reciprocal tariffs” on imports from all countries not subject to sanctions. Between January and September of the same year, the average applied US tariff rate jumped from 2.5% to 17.5%, after reaching a peak of 27% in April. This represented a major departure from previous practices and beliefs, with several ongoing bilateral negotiations still unfinished. Use one of the mainstream theories in the study of international relations (realism or liberalism) to analyze the major implications of the ongoing reorganization of the global trade regime derived from the unilateral imposition of tariffs by the U.S. (40%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "115",
+    "question": "【考科：國際現勢】\n2. In November, 2025, Japan and China started a diplomatic crisis after the remarks made by Prime Minister Sanae Takaichi, suggesting an attack on Taiwan could be “an existential crisis” for Japan. Describe and reflect on some of the main potential effects for all the parties involved, as well as for the Indo-Pacific region in general, of the escalating tensions between Tokyo and Beijing. (40%)",
+    "answer": ""
+  },
+  {
+    "category": "ir",
+    "sub": "政大國際研究所",
+    "year": "115",
+    "question": "【考科：國際現勢】\n3. In your opinion, what is the main challenge faced by the United Nations nowadays? Choose relevant concepts from one or more theories used in International Relations to support your answer. (20%)",
+    "answer": ""
+  }
+];
+
 async function firestoreLoadAllEntries(){
   await firestorePersistenceReady;
 
@@ -917,7 +1266,7 @@ const subLists = {
   intl: [
     '外交特考三等','外交特考國際法組海洋法與人權法','外交特考國際法組國際公法(含條約法)','國際經濟商務一般組','國際經濟商務經貿組','薦任情報',
     '台大政治所','台大法律庚組','政大外交所','水上警察','中央警察大學碩士班',
-    '司法官律師海商法與海洋法','高考海洋法','外事警察','台北大學法律所','UNCLOS','UNC','ICJ','維也納條約法公約','司律選擇題','外特選擇題','其他'
+    '司法官律師海商法與海洋法','高考海洋法','外事警察','台北大學法律所','UNCLOS','UNC','ICJ','維也納條約法公約','司律選擇題','外特選擇題','公費留考','其他'
   ],
   ir: [
     '外交特考三等','外交特考四等','國安','高考僑務','普考僑務','薦任升等',
@@ -3401,6 +3750,195 @@ const SEED_IO_GONGFEI_106_110 = [
   }
 ];
 
+
+
+// ===== 匯入批次：公費留學考試 國際組織（111～114年，教育部官方試題）=====
+const IMPORT_BATCH_ID_59 = 'gongfei-liukao-io-111-114';
+const SEED_IO_GONGFEI_111_114 = [
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "111",
+    "question": "一、簡答題（每題10分，共50分）：\n\n1. Shanghai Cooperation Organization\n2. collective security\n3. responsibility to protection (R2P)\n4. international regime\n5. Society for Worldwide Interbank Financial Telecommunication (SWIFT)",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "111",
+    "question": "二、申論題1：Please evaluate functions and operation of the OPEC (Organization of Petroleum Exporting Countries) from the following theoretical approaches: realism (5 points), liberal institutionalism (5 points), constructivism (5 points), neo-Marxism (5 points), and feminism (5 points).（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "111",
+    "question": "三、申論題2：Please address and analyze our country's (Republic of China) international participation through intergovernmental organizations (IGOs). Analyzing from: (1) overview in current circumstances (5 points), (2) general impacts of People's Republic of China (PRC) (5 points), (3) Taiwan's general strategy struggling against PRC (5 points), (4) illustrating a case of IGO and elaborating your views based on it (10 points).（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "一、（總分25分）請問聯合國有哪六大主要機構？（12分）自1990年代中期起，有什麼重要架構改革方案？（9分）改革成效如何？（4分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "二、（總分25分）在大致與聯合國同步建立的兩大協調國際經濟之重要聯合國專門機構中，哪一個主要與國際收支、金融秩序有關？（3分）其總裁都來自哪一洲？（3分）哪一個主要與促進發展、減輕貧窮有關？（3分）其總裁都來自哪一國？（3分）哪一國在這兩個組織中擁有重要事項否決權？（3分）什麼類型的國家不滿這兩個組織的決策結構，並呼籲改革？（5分）改革成效如何？（5分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "三、（總分25分）請寫出在1991年加入亞太經合會的三個經濟體在會中的英文名稱（9分），該組織的三個觀察員名稱（6分），以及亞太經合會運作機制的特質。（10分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "四、（總分25分）在2022年時，金磚國家有哪些成員國？（15分）它們和七大工業國成員的特質有什麼異同之處？（4分）有哪些重要政府間國際組織的總部，設在2023年獲准加入金磚國家的六個新成員國中？（6分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "113",
+    "question": "一、請以近期國際關係研究對改變現狀（revisionism）的最新發現，說明國際社會中改變現狀的定義與種類，並以世界貿易組織（World Trade Organization, WTO）為例，說明霸權改變國際組織之制度現狀的具體實踐。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "113",
+    "question": "二、請詳述非創始會員國從申請加入跨太平洋夥伴全面進步協定（Comprehensive and Progressive Agreement for Trans-Pacific Partnership, CPTPP），到該國加入CPTPP議定書生效之各階段流程，暨其相應規範。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "113",
+    "question": "三、近年聯合國安全理事會就和平利用外太空（outer space）與防止外太空軍備競賽，有激烈的討論。請分別說明美國、俄羅斯與中華人民共和國就限制在外太空部署武器系統的不同立場與爭議焦點。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "113",
+    "question": "四、法國是北大西洋公約組織（North Atlantic Treaty Organization, NATO）之創始會員國。請詳述法國自1949年後參與北大西洋公約組織之軍事指揮結構（NATO's Command Structure）的變化過程，並說明2024年的現況。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "114",
+    "question": "一、請詳述北大西洋公約（North Atlantic Treaty）第四條至第六條所規範之北約安全合作機制的內容、限制暨實踐案例。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "114",
+    "question": "二、請詳述1994年關稅及貿易總協定（1994 General Agreement on Tariffs and Trade）第21條之「國家安全例外」條款的內容與實踐案例。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "114",
+    "question": "三、請依據1979年月球協定（Agreement Governing the Activities of States on the Moon and Other Celestial Bodies）的規定，詳述國際社會對開採月球資源的基本原則。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "econ",
+    "sub": "公費留考",
+    "year": "114",
+    "question": "四、請敘述聯合國海洋法公約（United Nations Convention on the Law of the Sea）第112條至115條對海底電纜暨管道（submarine cable and pipeline）的各種規範。（25分）",
+    "answer": ""
+  }
+];
+
+
+
+// ===== 匯入批次：公費留學考試 國際公法（111～114年，教育部官方試題）=====
+const IMPORT_BATCH_ID_60 = 'gongfei-liukao-intl-111-114';
+const SEED_INTL_GONGFEI_111_114 = [
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "111",
+    "question": "一、（總分60分）和平解決國際爭端已經是二次世界大戰後的國際法義務，各國應以非武力方式解決爭端，聯合國憲章中亦嚴格限制使用武力（Use of Force）的時機與方式，請就以下問題詳加論述：\n\n（一）聯合國憲章第七章中規範「對於和平之威脅、和平之破壞及侵害」，試以此章相關規定論述俄羅斯「2022年對烏克蘭特別軍事行動」之合法性。（15分）\n\n（二）簡述2022年在俄羅斯採取特別軍事行動之後，烏克蘭於國際法院（ICJ）控訴俄羅斯聯邦案關於《防止及懲治滅絕種族罪公約》之原告與被告雙方之主張。（15分）\n\n（三）試分析歐盟與美國等西方國家採取對俄羅斯的進出口貨物貿易制裁與禁止進口措施，是否符合GATT第XXI條之「國家安全」例外主張？（15分）\n\n（四）中華民國已非聯合國之會員國，對於聯合國大會於2022年3月間之決議「譴責俄羅斯侵略烏克蘭，要求莫斯科無條件撤軍」，請分析該決議對我國之法律效力為何？（15分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "111",
+    "question": "二、（總分40分）聯合國海洋法公約中對於船舶航行之「無害通過」有詳盡之規範，請以1982年海洋法公約之規定分析以下問題：\n\n（一）依海洋法公約之規定，軍艦之性質為何？是否適用無害通過之規定？（20分）\n\n（二）美國主張於印太地區「自由航行」之權利，試論此規定是否符合海洋法公約之規範？美國並未批准聯合國海洋法公約（非公約成員國），是否影響上述主張？（20分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "一、（總分25分）關於豁免管轄，請說明下列問題：\n\n（一）A國近日制定《外國國家豁免法》，A國政府表示，「絕對豁免論」已經不合時宜，所以要遵循採納《聯合國國家及其財產管轄豁免公約》。請分析《聯合國國家及其財產管轄豁免公約》第十二條，說明國家在有關人身傷害和財產損害的訴訟中不得援引豁免的具體內容。（15分）\n\n（二）現任國家元首可否豁免國際刑事法院的管轄？請依據《國際刑事法院規約》說明之。（10分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "二、A、B二國正在協商，準備簽訂一個投資保障協定，關於投資待遇部分，A國建議要加入「最惠國待遇」和「國民待遇」二條款。請擬妥意見說明這二個條款的內容。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "三、老師上課表示，為了因應環境問題的快速變化，許多國際環境條約的立法形式經常採取所謂的「框架」（framework）公約模式。請問何謂框架公約模式，並舉一例說明之。（25分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "112",
+    "question": "四、（總分25分）A海灣地區有B、C、D三國，其中，B國與C國長期有海域劃界問題，關係不睦。D國於一個月前舉行選舉，新政府上臺後，第一件事就是宣布，作為一個新政府，它不繼承D國歷屆政府與外國所簽訂的各項條約。B國與C國外交部則於昨天正式宣布，要依據1982年《聯合國海洋法公約》，討論領海和專屬經濟區的劃界問題。\n\n（一）D國新政府不繼承D國歷屆政府與外國所簽訂的各項條約合乎國際法嗎？請具體說明理由。（15分）\n\n（二）依照《聯合國海洋法公約》，B國與C國之間領海和專屬經濟區的劃界原則為何？請說明之。（10分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "113",
+    "question": "一、（總分60分）以「時際法原則」（Principle of inter-temporal law）之定義與適用條件，說明下列各國際法情境：\n\n（一）在英國與中華人民共和國於1984年所簽署之「中華人民共和國政府和大不列顛及北愛爾蘭聯合王國政府關於香港問題的聯合聲明」中，中華人民共和國拒絕接受割讓香港島與九龍半島之「南京條約（1842年）」與「北京條約（1860年）」之效力，但選擇承認清帝國與英國於1898年簽署租用新界與兩百多個島嶼99年之「拓展香港界址專條」。雙方因此同意，於1997年租約屆期時，將香港島、九龍半島與租用島嶼「交還」中華人民共和國。（20分）\n\n（二）1982年聯合國海洋法公約第121條第3款明文規定，「不能維持人類居住或其本身的經濟生活的岩礁，不應有專屬經濟區或大陸礁層」。（20分）\n\n（三）以色列於1950年制定了「納粹黨及納粹同謀者處罰條例〔Nazis & Nazi Collaborators (Punishment) Law〕」，規定該法應溯及適用處罰二次大戰期間，對猶太人所犯之戰爭罪、違反人類罪與危害種族罪。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "113",
+    "question": "二、（總分40分）關於國際投資保障，說明下列各問題：\n\n（一）一主權國對於境內外國人財產之公用徵收，是否有應遵守之國際法原則？並請說明其法源與拘束力。（20分）\n\n（二）財產被徵收之外國人尋求其母國之外交保護時，是否應先「窮盡當地救濟（exhaustion of local remedies）」？（20分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "114",
+    "question": "一、（總分50分）2025年7月23日，國際法院（International Court of Justice）就聯合國大會決議提出之「國家就氣候變遷之義務（Obligations of States in respect of Climate Change）」問題做出諮詢意見（Advisory Opinion）。\n\n（一）試說明國際法院在此諮詢意見處理的主要問題為何？國際法院對各該問題之回答為何？（30分）\n\n（二）國際法院諮詢意見之國際法效力為何？（10分）\n\n（三）國際法院諮詢意見在我國之國內法效力為何？（10分）",
+    "answer": ""
+  },
+  {
+    "category": "intl",
+    "sub": "公費留考",
+    "year": "114",
+    "question": "二、（總分50分）美國與委內瑞拉之關係因移民及毒品問題處理而趨於緊張，美國並於2025年8月起於加勒比海南部區域（委國領海外）部署驅逐艦、兩棲攻擊艦及戰機和三千餘名陸戰隊。\n\n（一）倘美國要求委國改變其移民及毒品執法政策，否則將持續在委國周遭部署軍事力量，試從國際法角度評價美國行為之適法性？（20分）\n\n（二）美國將部分拉美毒梟集團認定為「恐怖組織」，美軍至2025年9月中止已於公海上擊沉三艘運毒船隻（懸掛委內瑞拉船旗）並造成十數名人傷亡，試從國際法角度評價美國行為之適法性？（15分）\n\n（三）倘委內瑞拉主張美國行為違反國際法，其在國際貿易法下能否主張對美實施反制措施（countermeasure）而禁止對美國出口石油產品？（美國和委國均為WTO會員，此部分勿討論GATT第XXI條安全例外的適用）（15分）",
+    "answer": ""
+  }
+];
+
 // ===== 匯入批次：國際經濟學 地特三等 97～112年試題（OCR掃描辨識，請留意可能的辨識誤差） =====
 
 // ===== 匯入批次：公費留學考試 國際關係（111～114年，教育部官方試題）=====
@@ -4913,7 +5451,10 @@ async function loadEntries(){
     { id: IMPORT_BATCH_ID_54, data: SEED_HISTORY_ZHENGDA_JPS_103 },
     { id: IMPORT_BATCH_ID_55, data: SEED_IR_NTU_98_99 },
     { id: IMPORT_BATCH_ID_56, data: SEED_IR_GONGFEI_101_110 },
-    { id: IMPORT_BATCH_ID_57, data: SEED_IO_GONGFEI_106_110 }
+    { id: IMPORT_BATCH_ID_57, data: SEED_IO_GONGFEI_106_110 },
+    { id: IMPORT_BATCH_ID_58, data: SEED_IR_NCCU_IMPIS_101_115 },
+    { id: IMPORT_BATCH_ID_59, data: SEED_IO_GONGFEI_111_114 },
+    { id: IMPORT_BATCH_ID_60, data: SEED_INTL_GONGFEI_111_114 }
   ];
 
   if(batchesToImport.some(b => !importedBatches.includes(b.id))){
