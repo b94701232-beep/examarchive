@@ -742,6 +742,15 @@ try{
 const ENTRIES_COLLECTION = 'examarchive_entries';
 const META_COLLECTION = 'examarchive_meta';
 
+
+// ===== 補充匯入批次：政大日研所 103年 當代日本政治與外交 =====
+const IMPORT_BATCH_ID_54 = 'zhengda-jps-103-contemporary-politics-diplomacy';
+const SEED_HISTORY_ZHENGDA_JPS_103 = [
+  {"category":"history","sub":"政大日研所","year":"103","question":"一、解釋名詞（每題8分，共40分）\n\n1. 日本維新會\n2. 日本遺族會\n3. 扭曲國會（ねじれ国会）\n4. 自由與繁榮之弧\n5. 族議員","answer":""},
+  {"category":"history","sub":"政大日研所","year":"103","question":"二、申論題（每題20分，共60分）\n\n1. 日本首相安倍晉三於2012年12月上台之後，其對中國大陸的外交政策特性為何？這項政策對東亞區域安全產生何種影響？","answer":""},
+  {"category":"history","sub":"政大日研所","year":"103","question":"二、申論題（每題20分，共60分）\n\n2. 1990年至今，日本政治體制逐漸由官僚主導轉變成官邸主導，之後又再轉型成政治家主導，請詳述這三個時期的政治特性，並請評估其政治效果。","answer":""},
+  {"category":"history","sub":"政大日研所","year":"103","question":"二、申論題（每題20分，共60分）\n\n3. 在日本民主黨執政時期（2009-2012），總計歷經了哪幾位首相？每位首相的外交政策有何異同？並請評估其政治效益。","answer":""}
+];
 // ===== Firestore 讀取節流設定 =====
 // 目的：避免每次開啟/重新整理頁面都把整個 collection 從伺服器重新讀一次。
 // 正常情況優先讀 IndexedDB 快取；距離上次完整雲端同步超過 24 小時才在背景更新。
@@ -922,7 +931,7 @@ const subLists = {
   ],
   politics: [
     '外特三等憲法','外特四等憲法','外特三等比政','外特四等比政','外特三等兩岸','外特四等兩岸',
-    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
+    '司律憲法','海巡三等憲法','海巡四等憲法','移民憲法三等','移民憲法四等','調查憲法','高考憲法','普考憲法','國安憲法','調查兩岸','國安兩岸',
     '政治學'
   ],
   econstudy: [
@@ -3106,6 +3115,258 @@ const SEED_IR_NEWS_PUKAO = [
   }
 ];
 
+
+
+// ===== 匯入批次：政大日研所 日本近代史（100～109年；103年上傳檔為「當代日本政治與外交」，故不匯入） =====
+const IMPORT_BATCH_ID_53 = 'zhengda-jps-modern-history-100-109-v1';
+const SEED_HISTORY_ZHENGDA_JPS = [
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "109",
+    "question": "一、解釋名詞（4×10%）
+
+1. 滿州事變（九一八事變）
+2. ロンドン海軍軍縮會議（倫敦海軍會議）
+3. ポツダム宣言（波茨坦宣言）
+4. 田中角榮と中日關係",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "109",
+    "question": "二、申論題 1. 試論近代中日關係史上日本何以選擇了戰爭之路？（30%）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "109",
+    "question": "二、申論題 2. 試述岩倉具視使節團的具體內容與歷史意義。（30%）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "108",
+    "question": "一、解釋名詞（60%）【作答中日文皆可】
+
+1. 條約改正交涉
+2. 大日本帝國憲法と日本國憲法
+3. ワシントン体制
+4. 幣原外交と田中外交
+5. 日米安保條約
+6. 日中國交正常化",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "108",
+    "question": "二、申論題 1. 試論日清、日俄兩場戰爭，對近代中日關係造成何種影響？（20%）【作答中日文皆可】",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "108",
+    "question": "二、申論題 2. 試論二十一條要求與西原借款對中日兩國關係所造成之影響。（20%）【作答中日文皆可】",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "107",
+    "question": "一、解釋名詞（10分×6）
+
+1. 西南戰爭
+2. 自由民權運動
+3. 脫亞論
+4. 1933年日本退出國聯
+5. 1952年日華和平條約
+6. 大宰治",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "107",
+    "question": "二、申論題 1. 何謂英日同盟？該同盟對日本和英國的意義有哪些？（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "107",
+    "question": "二、申論題 2. 1950年爆發的韓戰對日本的政治、經濟、外交帶來哪些影響？（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "106",
+    "question": "一、解釋名詞（10×6）
+
+1. 廢藩置縣
+2. 夏目漱石
+3. 二二六事件
+4. 日蘇共同宣言
+5. 日本列島改造論
+6. 福田主義（Fukuda Doctrine）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "106",
+    "question": "二、申論題 1. 請您敘述1927年所爆發的「金融恐慌」對日本國內政治、經濟以及外交和軍事政策的影響。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "106",
+    "question": "二、申論題 2. 日本學界認為戰後日本有主要三個外交路線，即「經濟中心主義路線」、「社會民主主義路線」、「傳統的國家主義路線」，請說明這三個政策以及您的看法。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "105",
+    "question": "一、解釋名詞（10×6）
+
+1. 伊藤博文
+2. 牡丹社事件（征台之役）
+3. 對華二十一條要求
+4. 吉田茂
+5. 日美安保條約
+6. 國民所得倍增計畫",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "105",
+    "question": "二、申論題 1. 請敘述1904-05年的日俄戰爭，並且利用下列的關鍵詞或內容（日英同盟、中國東北、樸資茅斯條約、該戰爭對日俄兩國的意義等）回答。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "105",
+    "question": "二、申論題 2. 請敘述1931年到1945年的中日關係，並且利用下列的關鍵詞或內容（918事變、77事變、國共合作、該戰爭對日本和中華民國兩國的意義等）回答。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "104",
+    "question": "一、解釋名詞（每題10分，40分）
+
+1. 文明開化
+2. 廢除不平等條約
+3. 大正民主
+4. 中日聯合聲明（日中正常化）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "104",
+    "question": "二、申論題 1. 日本的近代史，從江戶時代末期1853年黑船來航後進入動盪時代，請您敘述從黑船事件到成立為信政府以及結束戊辰戰爭的過程，請利用關鍵詞（馬修・培理、鎖國體制、大政奉還、尊王攘夷運動、王政復古、薩長同盟）回答。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "104",
+    "question": "二、申論題 2. 請你敘述甲午戰爭和馬關（下關）條約。（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "104",
+    "question": "二、申論題 3. 何謂舊金山和平條約，並且請敘述該條約對日本的內政和外交帶來什麼影響？（20分）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "102",
+    "question": "一、試論日清戰爭與第一次大戰在近代中日關係史上的意義與影響。（35%）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "102",
+    "question": "二、解釋名詞
+
+1. 波茨坦宣言（15%）
+2. 沖繩返還（15%）
+3. 幣原外交（15%）
+4. 日清提攜與脫亞入歐（20%）",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "101",
+    "question": "一、名詞解釋（40%）
+
+1. 協調外交
+2. 澀澤榮一
+3. 小村壽太郎
+4. 華盛頓體制
+5. 滿洲事變",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "101",
+    "question": "二、申論題 1. 日本在21世紀的國際社會中，應扮演甚麼樣的角色，履行甚麼樣的責任？請論述之。",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "101",
+    "question": "二、申論題 2. 對日抗戰初期，日本政府本採取「不擴大」方針，然而為何後來演變成全面戰爭？",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "100",
+    "question": "一、解釋名詞（60%）
+
+1. 琉球歸屬問題
+2. 殖產興業政策
+3. 條約改正
+4. 岡倉天心與福澤諭吉
+5. 日華平和條約
+6. 大亞洲主義",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "100",
+    "question": "二、問答題 1. 試舉出日本近代史上的三件大事，並述明其重要性及歷史意義。",
+    "answer": ""
+  },
+  {
+    "category": "history",
+    "sub": "政大日研所",
+    "year": "100",
+    "question": "二、問答題 2. 試論第一次世界大戰日本參戰的理由？戰爭期間日本何以支援段祺瑞政府，具體內容如何？何以提出對華二十一條？有何影響？",
+    "answer": ""
+  }
+];
+
 const IMPORT_BATCH_ID_36 = 'dite-econstudy3-97-112';
 const SEED_ECONSTUDY_DITE3 = [
 {"category": "econstudy", "sub": "地特三等", "year": "97", "question": "一、在國際貿易與經濟成長的文獻中，有所謂「悲慘或不利的成長」（immiserizing growth）。何謂「悲慘或不利的成長」？為何此種現象較常發生於開發中國家？（25分）", "answer": ""},
@@ -3813,6 +4074,19 @@ async function loadEntries(){
     if(e.category === 'intl' && e.sub === '司法官海洋組'){ e.sub = '司法官律師海商法與海洋法'; changed = true; }
     if(e.category === 'intl' && e.sub === '中央大學碩士班'){ e.sub = '中央警察大學碩士班'; changed = true; }
     if(e.category === 'ir' && e.sub === '新聞'){ e.sub = '新聞三等'; changed = true; }
+    // 移民憲法分類相容修正：恢復 2026-08-19 使用的正式名稱，並吸收曾出現的舊／錯誤別名
+    if(e.category === 'politics'){
+      const oldSub = String(e.sub || '').trim();
+      if(oldSub === '移民憲法' || oldSub === '移民三等憲法' || oldSub === '移民三等' || oldSub === '移民署三等憲法'){
+        e.sub = '移民憲法三等'; changed = true;
+      }else if(oldSub === '移民四等憲法' || oldSub === '移民四等' || oldSub === '移民署四等憲法'){
+        e.sub = '移民憲法四等'; changed = true;
+      }else if(/移民.*三等|三等.*移民/.test(oldSub) && oldSub !== '移民憲法三等'){
+        e.sub = '移民憲法三等'; changed = true;
+      }else if(/移民.*四等|四等.*移民/.test(oldSub) && oldSub !== '移民憲法四等'){
+        e.sub = '移民憲法四等'; changed = true;
+      }
+    }
     if(e.category === 'ir' && e.sub === '地特'){ e.sub = '地特三等'; changed = true; }
     if(e.sub === '台大研究所'){ e.sub = '台大政治所'; changed = true; }
     if(e.sub === '政大研究所'){ e.sub = '政大外交所'; changed = true; }
@@ -4118,23 +4392,30 @@ async function loadEntries(){
     { id: IMPORT_BATCH_ID_49, data: SEED_ECONSTUDY_JINGMAO_LAW },
     { id: IMPORT_BATCH_ID_50, data: SEED_ECONSTUDY_PUKAO },
     { id: IMPORT_BATCH_ID_51, data: SEED_IR_GONGFEI },
-    { id: IMPORT_BATCH_ID_52, data: SEED_IR_NEWS_PUKAO }
+    { id: IMPORT_BATCH_ID_52, data: SEED_IR_NEWS_PUKAO },
+    { id: IMPORT_BATCH_ID_53, data: SEED_HISTORY_ZHENGDA_JPS },
+    { id: IMPORT_BATCH_ID_54, data: SEED_HISTORY_ZHENGDA_JPS_103 }
   ];
 
   if(batchesToImport.some(b => !importedBatches.includes(b.id))){
     updateLoadingProgress(65, '正在準備匯入歷屆試題批次…');
   }
 
+  const changedBeforeBatchImports = changed;
+  const newlyImportedEntries = [];
+
   batchesToImport.forEach(batch=>{
     try{
       if(!importedBatches.includes(batch.id)){
         if(Array.isArray(batch.data)){
           batch.data.forEach((seed, idx)=>{
-            entries.push({
+            const newEntry = {
               id: 'seed-' + batch.id + '-' + idx,
               createdAt: Date.now(),
               ...seed
-            });
+            };
+            entries.push(newEntry);
+            newlyImportedEntries.push(newEntry);
           });
         }
         importedBatches.push(batch.id);
@@ -4151,7 +4432,13 @@ async function loadEntries(){
     updateLoadingProgress(80, '正在將更新後的資料寫回 Firebase…');
     if(window.__cloudMode && db){
       try{
-        await firestoreBatchWriteEntries(entries);
+        // 若這次只有新增匯入批次，僅寫入新增題目，避免整庫重寫造成大量 Firestore writes。
+        // 若前面另有舊資料遷移／修復，才使用完整寫回以確保修正同步。
+        if(!changedBeforeBatchImports && newlyImportedEntries.length > 0){
+          await firestoreBatchWriteEntries(newlyImportedEntries);
+        }else{
+          await firestoreBatchWriteEntries(entries);
+        }
         await firestoreSetImportedBatches(importedBatches);
         updateStorageStatus('ok');
       }catch(cloudSaveErr){
