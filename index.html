@@ -547,11 +547,24 @@
     text-align:center;
     overflow-x:auto;
   }
+
+
+  /* MathJax 容錯：即使第三方套件未載入成功，也不要顯示醒目的紅色錯誤塊。 */
+  mjx-merror{
+    color:inherit !important;
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+  }
 </style>
 <!-- MathJax：支援題目／解答中的 LaTeX，例如 \\(i^*\\)、\\(E=mc^2\\) -->
 <script>
 window.MathJax = {
+  // noerrors：遇到 AI 回答裡殘缺／不合法的 LaTeX 時，保留原始數學輸入，
+  // 不再在正文中插入紅色的「Math input error」。正常公式仍照常排版。
+  loader: { load: ['[tex]/noerrors'] },
   tex: {
+    packages: {'[+]': ['noerrors']},
     inlineMath: [['\\(', '\\)']],
     displayMath: [['\\[', '\\]'], ['$$', '$$']],
     processEscapes: true
@@ -5859,7 +5872,16 @@ function typesetMath(){
   if(window.MathJax && MathJax.typesetPromise){
     sanitizeMathTextNodes(document.getElementById('content'));
     MathJax.typesetClear && MathJax.typesetClear([document.getElementById('content')]);
-    MathJax.typesetPromise([document.getElementById('content')]).catch(()=>{});
+    MathJax.typesetPromise([document.getElementById('content')]).then(()=>{
+      // 最後一道保險：若 CDN／noerrors 套件異常，MathJax 仍產生 merror，
+      // 將紅色系統錯誤訊息移除，避免污染申論正文。
+      document.querySelectorAll('#content mjx-merror').forEach(el=>{
+        const msg = (el.textContent || '').trim();
+        if(/Math input error|macro parameter character|Undefined control sequence|Extra \}|Missing \}/i.test(msg)){
+          el.replaceWith(document.createTextNode(''));
+        }
+      });
+    }).catch(()=>{});
   }
 }
 
