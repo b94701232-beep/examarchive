@@ -5885,8 +5885,68 @@ function typesetMath(){
   }
 }
 
+function stripUiArtifacts(text){
+  // AI 回答偶爾會把 ChatGPT 的 GenUI 內部元件引用一併複製進文字，例如：
+  // genui{"widget":{...}} 或因字型／編碼退化成 □genui[]{...}□。
+  // 這些不是答案正文；僅在顯示時移除，不修改 Firestore 中的原始內容。
+  let s = String(text ?? '');
+
+  // 正常的 GenUI content-reference 格式。
+  s = s.replace(/genui[\s\S]*?/gi, '');
+
+  // 處理退化／破損版本。用括號計數找 JSON 結尾，避免簡單 regex 因巢狀物件只刪一半。
+  let guard = 0;
+  while(guard++ < 50){
+    const lower = s.toLowerCase();
+    const pos = lower.indexOf('genui');
+    if(pos < 0) break;
+
+    // 往前吃掉常見的 replacement glyph / content-reference 起始殘片。
+    let start = pos;
+    while(start > 0 && /[\s□�]/.test(s[start - 1])) start--;
+
+    // GenUI 後面通常是 [],  或直接 JSON；只在附近真的找到 { 才視為元件標記。
+    const brace = s.indexOf('{', pos + 5);
+    if(brace < 0 || brace - pos > 40){
+      // 沒有 payload 時只移除孤立的 genui 標籤，避免無限迴圈。
+      s = s.slice(0, start) + s.slice(pos + 5).replace(/^\s*(?:\[\])?\s*/, '');
+      continue;
+    }
+
+    let depth = 0, inString = false, escaped = false, end = -1;
+    for(let i = brace; i < s.length; i++){
+      const ch = s[i];
+      if(inString){
+        if(escaped) escaped = false;
+        else if(ch === '\\') escaped = true;
+        else if(ch === '"') inString = false;
+        continue;
+      }
+      if(ch === '"'){ inString = true; continue; }
+      if(ch === '{') depth++;
+      else if(ch === '}'){
+        depth--;
+        if(depth === 0){ end = i + 1; break; }
+      }
+    }
+
+    if(end < 0){
+      // JSON 本身也殘缺時，至少移除該行的 GenUI 垃圾，不波及下一段正文。
+      const lineEnd = s.indexOf('\n', pos);
+      end = lineEnd >= 0 ? lineEnd : s.length;
+    }
+
+    // 吃掉結尾常見的 content-reference / replacement glyph 殘片，但不吃正文。
+    while(end < s.length && /[\s□�]/.test(s[end])) end++;
+    s = s.slice(0, start) + s.slice(end);
+  }
+
+  return s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+}
+
 function renderMarkdown(text){
   if(!text) return '';
+  text = stripUiArtifacts(text);
   // 編號排版原則：永遠尊重答案原文中的明示編號，不自行改寫數字。
   // 舊版曾把所有「1.」依前文計數器自動改成下一號，會把不同層級混在一起；
   // 例如外層「2. 集體自衛」之後的內層「1. 認定...」會被誤改成「3.」。
