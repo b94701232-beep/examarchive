@@ -5784,7 +5784,11 @@ function sanitizeMathForMathJax(math){
   return String(math ?? '')
     .replace(/(^|[^\\])#/g, '$1\\#')
     .replace(/\\\\#/g, '\\#')
-    .replace(/\\\\%/g, '\\%');
+    // 百分比不再交給 TeX 的 \% 處理：部分 AI 回答經多次跳脫後，
+    // MathJax 可能把反斜線本身畫出來。先移除任意層級反斜線，
+    // 再改成 Unicode 百分比字元，避免 % 被 TeX 當成註解起始符號。
+    .replace(/\\+%/g, '％')
+    .replace(/%/g, '％');
 }
 
 function inlineMarkdown(s){
