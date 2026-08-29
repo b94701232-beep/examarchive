@@ -5781,7 +5781,10 @@ function escapeHtml(s){
 function sanitizeMathForMathJax(math){
   // MathJax/TeX 會把裸 # 視為巨集參數符號；一般貼上的公式若含 #，
   // 自動轉成 \#，避免出現 "You can't use 'macro parameter character #' in math mode"。
-  return String(math ?? '').replace(/(^|[^\\])#/g, '$1\\#').replace(/\\\\#/g, '\\#');
+  return String(math ?? '')
+    .replace(/(^|[^\\])#/g, '$1\\#')
+    .replace(/\\\\#/g, '\\#')
+    .replace(/\\\\%/g, '\\%');
 }
 
 function inlineMarkdown(s){
