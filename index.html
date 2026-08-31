@@ -1272,6 +1272,7 @@ let currentCat = 'intl';
 let currentSub = 'all';
 let openYears = new Set();
 let currentImageData = null;
+let lastUsedYear = ''; // 前一題儲存完成時所填寫的年度，作為下一題新增時的預設值
 
 const catNames = { intl: '國際法', ir: '國際關係', history: '外交史', econ: '國際組織', politics: '政治學', econstudy: '國際經濟學' };
 
@@ -6425,8 +6426,9 @@ function populateSubSelect(cat, selected){
 
 // 智慧年度預設：
 // 1) 優先從使用者貼上的題目文字中辨識明確的民國年度（例如「114年」）。
-// 2) 若題目尚未貼上，則以目前所選「類別＋子項目」中最新的既有年度作為預設。
-// 3) 若該分類尚無資料，最後以今年的民國年作為預設。
+// 2) 若題目尚未貼上，則以「前一題剛儲存完成」時所使用的年度作為預設（方便連續輸入同一年度的多道題目）。
+// 3) 若尚未有任何一題儲存過，則以目前所選「類別＋子項目」中最新的既有年度作為預設。
+// 4) 若該分類尚無資料，最後以今年的民國年作為預設。
 function getCurrentRocYear(){
   return String(new Date().getFullYear() - 1911);
 }
@@ -6454,6 +6456,7 @@ function detectYearFromQuestion(text){
 }
 
 function getSmartDefaultYear(cat, sub){
+  if(lastUsedYear) return lastUsedYear;
   const candidates = entries
     .filter(e => e.category === cat && (!sub || sub === 'all' || e.sub === sub) && /^\d{2,4}$/.test(String(e.year || '')))
     .map(e => {
@@ -6605,6 +6608,8 @@ document.getElementById('saveBtn').addEventListener('click', async ()=>{
   }else{
     await saveToStorage();
   }
+  // 記錄這一題儲存完成時使用的年度，讓下一次新增題目時自動帶入同一個年度。
+  if(year) lastUsedYear = year;
   currentCat = cat;
   currentSub = sub;
   document.querySelectorAll('.tab').forEach(t=>{
