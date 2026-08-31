@@ -6423,8 +6423,88 @@ function populateSubSelect(cat, selected){
   if(selected) sel.value = selected;
 }
 
+// 智慧年度預設：
+// 1) 優先從使用者貼上的題目文字中辨識明確的民國年度（例如「114年」）。
+// 2) 若題目尚未貼上，則以目前所選「類別＋子項目」中最新的既有年度作為預設。
+// 3) 若該分類尚無資料，最後以今年的民國年作為預設。
+function getCurrentRocYear(){
+  return String(new Date().getFullYear() - 1911);
+}
+
+function detectYearFromQuestion(text){
+  if(!text) return '';
+  const patterns = [
+    /(?:民國\s*)?(\d{3})\s*年/g,
+    /(?:\b|^)(1\d{2})\s*年度?/g
+  ];
+  for(const re of patterns){
+    const m = re.exec(text);
+    if(m){
+      const y = parseInt(m[1],10);
+      if(y >= 80 && y <= 130) return String(y);
+    }
+  }
+  // 也支援直接貼上西元年度，例如「2026年考試試題」，自動轉為民國年。
+  const g = text.match(/(?:^|[^0-9])(20\d{2})\s*年/);
+  if(g){
+    const y = parseInt(g[1],10) - 1911;
+    if(y >= 80 && y <= 130) return String(y);
+  }
+  return '';
+}
+
+function getSmartDefaultYear(cat, sub){
+  const candidates = entries
+    .filter(e => e.category === cat && (!sub || sub === 'all' || e.sub === sub) && /^\d{2,4}$/.test(String(e.year || '')))
+    .map(e => {
+      const raw = String(e.year);
+      const n = parseInt(raw,10);
+      return n >= 1900 ? n - 1911 : n;
+    })
+    .filter(y => y >= 80 && y <= 130);
+  if(candidates.length) return String(Math.max(...candidates));
+  return getCurrentRocYear();
+}
+
+function refreshSmartYear(){
+  const yearInput = document.getElementById('f-year');
+  const questionInput = document.getElementById('f-question');
+  const detected = detectYearFromQuestion(questionInput.value);
+  if(detected){
+    yearInput.value = detected;
+    yearInput.dataset.smart = 'detected';
+    return;
+  }
+  if(yearInput.dataset.smart !== 'manual') {
+    yearInput.value = getSmartDefaultYear(document.getElementById('f-cat').value, document.getElementById('f-sub').value);
+    yearInput.dataset.smart = 'default';
+  }
+}
+
 document.getElementById('f-cat').addEventListener('change', (ev)=>{
   populateSubSelect(ev.target.value);
+  const y = document.getElementById('f-year');
+  y.dataset.smart = 'default';
+  refreshSmartYear();
+});
+
+document.getElementById('f-sub').addEventListener('change', ()=>{
+  const y = document.getElementById('f-year');
+  y.dataset.smart = 'default';
+  refreshSmartYear();
+});
+
+document.getElementById('f-year').addEventListener('input', ()=>{
+  document.getElementById('f-year').dataset.smart = 'manual';
+});
+
+document.getElementById('f-question').addEventListener('input', ()=>{
+  const y = document.getElementById('f-year');
+  const detected = detectYearFromQuestion(document.getElementById('f-question').value);
+  if(detected && y.dataset.smart !== 'manual') {
+    y.value = detected;
+    y.dataset.smart = 'detected';
+  }
 });
 
 document.getElementById('openAdd').addEventListener('click', ()=>{
@@ -6432,7 +6512,8 @@ document.getElementById('openAdd').addEventListener('click', ()=>{
   document.getElementById('editId').value = '';
   document.getElementById('f-cat').value = currentCat;
   populateSubSelect(currentCat, currentSub !== 'all' ? currentSub : undefined);
-  document.getElementById('f-year').value = '';
+  document.getElementById('f-year').value = getSmartDefaultYear(currentCat, currentSub !== 'all' ? currentSub : '');
+  document.getElementById('f-year').dataset.smart = 'default';
   document.getElementById('f-question').value = '';
   document.getElementById('f-answer-chatgpt').value = '';
   document.getElementById('f-answer-gemini').value = '';
